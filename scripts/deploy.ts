@@ -24,7 +24,7 @@ export const main: DeployerFn<{}> = async ({
   provider
   const args = [
     ALFAJORES_ADDRESS, STAKING_REWARDS_ADDRESS, ROUTER_ADDRESS, path0, path1, 'cUSD_CELO_FP'
-  ]
+  ] // todo add revo bounty address
   const farmBot = await deployCreate2('FarmBot_2', {
     //@ts-ignore -- we could use a typechain-generated type here, but that introduces a circular dependency (need to compile contracts before typechain's types exist/update, but types must exist/update before this will compile properly...). Particularly hard to fix here because this module is imported by hardhat config, which is always loaded first (so a post-install step wont help here)
     factory: ContractFactory,
