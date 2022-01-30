@@ -136,6 +136,13 @@ contract FarmBot is Owned, FarmbotERC20 {
         stakingRewards.stake(tokenBalance);
     }
 
+    // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
+    function previewBounty() public view returns (TokenAmount[]) {
+        uint _leftoverBalance = rewardsToken.balanceOf(address(this));
+        uint _interestEarned = stakingRewards.earned(address(this));
+        return revoBounty.calculateFeeBounty([TokenAmount(address(rewardsToken), _interestEarned + _leftoverBalance)]);
+    }
+
     function claimRewards(uint deadline) public ensure(deadline) {
         stakingRewards.getReward();
         uint256 tokenBalance = rewardsToken.balanceOf(address(this));
@@ -144,10 +151,10 @@ contract FarmBot is Owned, FarmbotERC20 {
             return;
         }
 
-        TokenAmount feeAmounts = revoBounty.calculateFeeBounty(address(this));
-        assert(feeAmounts.length == 1, "Invalid fee amounts, should have size 1 for single reward contract");
+        TokenAmount feeAmounts = revoBounty.calculateFeeBounty([TokenAmount(address(rewardsToken), tokenBalance)]);
+        assert(feeAmounts.length == 1, "Invalid fee amounts, should have size 1 for farm with 1 reward token");
         uint256 feeAmount = feeAmounts[0].amount;
-        assert(feeAmount <= maxFeeNumerator * tokenBalance / maxFeeDenominator, "Unacceptable fees, returning");
+        assert(feeAmount <= maxFeeNumerator * tokenBalance / maxFeeDenominator, "Fees exceed maximum allowed");
         uint256 halfTokens = (tokenBalance - feeAmount) / 2;
 
         uint256 amountToken0;

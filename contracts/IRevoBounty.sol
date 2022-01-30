@@ -8,6 +8,6 @@ struct TokenAmount {
 }
 
 interface IRevoBounty {
-    function calculateFeeBounty(address farmBotAddress) external view returns (TokenAmount[]);
+    function calculateFeeBounty(TokenAmount[] interestAccrued) external view returns (TokenAmount[]);
     function issueAdditionalBounty(address recipient) external;
 }
