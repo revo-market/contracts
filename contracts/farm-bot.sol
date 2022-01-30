@@ -8,6 +8,7 @@ import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./ubeswap-farming/contracts/Owned.sol";
 import "./FarmbotERC20.sol";
+import "./IRevoBounty.sol";
 
 contract FarmBot is Owned, FarmbotERC20 {
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
@@ -30,9 +31,12 @@ contract FarmBot is Owned, FarmbotERC20 {
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
 
-    // Fee awarded to address triggering autocompounding; can be updated by owner
-    uint256 public feeNumerator = 1;
-    uint256 public feeDenominator = 1000; // .1% fee awarded to claimRewards caller
+    // Configurable bounty contract. Determines the bounty for calling claimRewards on behalf of farm investors.
+    //      May issue external reward (e.g. a governance token), plus a small fee on interest earned by FP holders.
+    //      Fees should be 0.1% and are guaranteed to be < 4%, the current standard for other protocols.
+    IRevoBounty public revoBounty;
+    uint256 public maxFeeNumerator = 40;
+    uint256 public maxFeeDenominator = 1000;
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'FarmBot: EXPIRED');
@@ -62,8 +66,8 @@ contract FarmBot is Owned, FarmbotERC20 {
     }
 
     function updateFee(uint256 _feeNumerator, uint256 _feeDenominator) external onlyOwner {
-        feeNumerator = _feeNumerator;
-        feeDenominator = _feeDenominator;
+        maxFeeNumerator = _feeNumerator;
+        maxFeeDenominator = _feeDenominator;
     }
 
     function updatePaths(address[] calldata _path0, address[] calldata _path1) external onlyOwner {
@@ -139,7 +143,10 @@ contract FarmBot is Owned, FarmbotERC20 {
             return;
         }
 
-        uint256 feeAmount = tokenBalance * feeNumerator / feeDenominator;
+        TokenAmount feeAmounts = revoBounty.calculateFeeBounty(address(this));
+        assert(feeAmounts.length == 1, "Invalid fee amounts, should have size 1 for single reward contract");
+        uint256 feeAmount = feeAmounts[0].amount;
+        assert(feeAmount <= maxFeeNumerator * tokenBalance / maxFeeDenominator, "Unacceptable fees, returning");
         uint256 halfTokens = (tokenBalance - feeAmount) / 2;
 
         uint256 amountToken0;
@@ -203,5 +210,6 @@ contract FarmBot is Owned, FarmbotERC20 {
 
         // Send incentive fee to sender
         rewardsToken.transfer(msg.sender, feeAmount);
+        revoBounty.issueAdditionalBounty(msg.sender);
     }
 }
