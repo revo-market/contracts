@@ -109,3 +109,6 @@ dist
 # contract compilation
 artifacts/
 hardhat-cache/
+
+# generated types
+typechain/

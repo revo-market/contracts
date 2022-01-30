@@ -985,6 +985,14 @@
   dependencies:
     fs-extra "^9.1.0"
 
+"@typechain/web3-v1@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@typechain/web3-v1/-/web3-v1-5.0.0.tgz#01c4b9d299c0f7b720c9646da0903f1a0dbb06a6"
+  integrity sha512-GV//QCEerMJ342vUfn/+8Z4BnXytbOja2JYev74NN41VjF9UcOO62MAiAl1N0RAs+SBRBabwPASN+7Uj0gGd/w==
+  dependencies:
+    lodash "^4.17.15"
+    ts-essentials "^7.0.1"
+
 "@types/abstract-leveldown@*":
   version "5.0.2"
   resolved "https://registry.yarnpkg.com/@types/abstract-leveldown/-/abstract-leveldown-5.0.2.tgz#ee81917fe38f770e29eec8139b6f16ee4a8b0a5f"
