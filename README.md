@@ -6,6 +6,15 @@ Revo smart contracts.
 yarn
 ```
 
+## E2e tests
+To run an e2e test script, first prepare two wallets on Alfajores according to the instructions in
+`scripts/check-farm-bot-alfajores.ts` (at time of writing, this meant getting LP tokens for each one). Then you can run
+the test script with `ts-node` as follows:
+```
+ALFAJORES_WALLET_PRIVATE_KEY=<fill this in> ALFAJORES_WALLET_PRIVATE_KEY_2=<fill this in too> node --require ts-node/register /Users/charlie/code/revo/contracts/./scripts/check-farm-bot-alfajores.ts
+```
+or with regular node by first building with `yarn build` and then running the compiled JS file.
+
 ## Deploying to Alfajores
 1. Fill out `scripts/deploy.ts` with the desired parameters
 2. Compile contracts with `yarn compile-contracts`
