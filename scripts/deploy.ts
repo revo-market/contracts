@@ -8,7 +8,7 @@ import { DeployerFn } from '@ubeswap/hardhat-celo';
  *  Since this script is used by our hardhat config (to add a 'deploy' task),
  *  this will block contract compilation!
  *
- *  As a workaround, uncomment the empty 'main' function below, and comment out
+ *  As a workaround, for your first time compiling contracts, uncomment the empty 'main' function below, and comment out
  *    everything below it.
  *  (Yes, this is totally lame.)
  */
