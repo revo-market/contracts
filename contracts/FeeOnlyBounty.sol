@@ -24,15 +24,16 @@ contract FeeOnlyBounty is Owned, IRevoBounty {
         feeDenominator = _feeDenominator;
     }
 
-    function calculateFeeBounty(TokenAmount[] memory _interestAccrued) external view returns (TokenAmount[] memory output) {
+    function calculateFeeBounty(TokenAmount[] memory _interestAccrued) external override view returns (TokenAmount[] memory output) {
         output = new TokenAmount[](_interestAccrued.length);
         for (uint idx = 0; idx < _interestAccrued.length; idx++) {
-            address _rewardsTokenAddress = _interestAccrued[idx].token;
             uint _fee = _interestAccrued[idx].amount * feeNumerator / feeDenominator;
-            output[idx] = TokenAmount(_rewardsTokenAddress, _fee);
+            output[idx] = TokenAmount(_interestAccrued[idx].token, _fee);
         }
         return output;
     }
 
-    function issueAdditionalBounty(address recipient) external;  // intentionally does nothing
+    function issueAdditionalBounty(address recipient) external override {
+      return; // intentionally does nothing
+    }
 }
