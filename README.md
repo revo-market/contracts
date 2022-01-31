@@ -1,10 +1,22 @@
 # contracts
 Revo smart contracts.
 
-## Installation
-```
-yarn
-```
+## Installation / setup
+First install dependencies with yarn (just type `yarn` in the CLI from the project root and hit enter).
+
+Next compile contracts, which also populates the typechain types (which are needed elsewhere). 
+
+For first-time setup, follow the instructions in `scripts/deploy.ts` to prevent compilation errors
+due to missing generated types. 
+
+Then run this from the CLI: `yarn compile-contracts` . This will generate the typescript types for our contracts;
+they will be saved to the `typechain` directory.
+
+After initial setup, you should be able to use the "normal" deploy script without issues.
+
+Note that after making changes to contracts, you will need to compile the contracts to update the `typechain` types,
+then possibly update the deploy script before deploying (in particular, this will be necessary if you updated arguments
+for the constructor for some contract in the deploy script).
 
 ## E2e tests
 To run an e2e test script, first prepare two wallets on Alfajores according to the instructions in
