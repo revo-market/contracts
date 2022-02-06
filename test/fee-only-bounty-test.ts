@@ -1,4 +1,5 @@
 import {expect} from 'chai'
+import {FeeOnlyBounty} from "../typechain"
 
 const {ethers} = require('hardhat')
 
@@ -6,7 +7,7 @@ describe('Unit tests for FeeOnlyBounty contract', async () => {
   it('fees can be accessed', async () => {
     const [owner] = await ethers.getSigners()
     const contractFactory = await ethers.getContractFactory('FeeOnlyBounty')
-    const bountyContract = await contractFactory.deploy(
+    const bountyContract: FeeOnlyBounty = await contractFactory.deploy(
       await owner.getAddress(),  // owner
       4, // feeNumerator
       1000, // feeDenominator
