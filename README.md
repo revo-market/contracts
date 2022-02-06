@@ -1,5 +1,5 @@
-# contracts
-Revo smart contracts.
+# Contracts
+Smart contracts for Revo, a DeFi platform that makes yield farming easy and profitable for everyone.
 
 ## Installation / setup
 First install dependencies with yarn (just type `yarn` in the CLI from the project root and hit enter).
