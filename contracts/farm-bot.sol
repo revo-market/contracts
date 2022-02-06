@@ -8,6 +8,7 @@ import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./ubeswap-farming/contracts/Owned.sol";
 import "./FarmbotERC20.sol";
+import "./IRevoBounty.sol";
 
 contract FarmBot is Owned, FarmbotERC20 {
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
@@ -30,9 +31,12 @@ contract FarmBot is Owned, FarmbotERC20 {
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
 
-    // Fee awarded to address triggering autocompounding; can be updated by owner
-    uint256 public feeNumerator = 1;
-    uint256 public feeDenominator = 1000; // .1% fee awarded to claimRewards caller
+    // Configurable bounty contract. Determines the bounty for calling claimRewards on behalf of farm investors.
+    //      May issue external reward (e.g. a governance token), plus a small fee on interest earned by FP holders.
+    //      Fees should be 0.1% and are guaranteed to be < 4%, the current standard for other protocols.
+    IRevoBounty public revoBounty;
+    uint256 public maxFeeNumerator = 40;
+    uint256 public maxFeeDenominator = 1000;
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'FarmBot: EXPIRED');
@@ -42,6 +46,7 @@ contract FarmBot is Owned, FarmbotERC20 {
     constructor(
         address _owner,
         address _stakingRewards,
+        address _revoBounty,
         address _router,
         address[] memory _path0,
         address[] memory _path1,
@@ -49,6 +54,7 @@ contract FarmBot is Owned, FarmbotERC20 {
     ) Owned(_owner) {
         stakingRewards = StakingRewards(_stakingRewards);
         rewardsToken = stakingRewards.rewardsToken();
+        revoBounty = IRevoBounty(_revoBounty);
 
         stakingToken = IUniswapV2Pair(address(stakingRewards.stakingToken()));
         stakingToken0 = IERC20(stakingToken.token0());
@@ -61,9 +67,8 @@ contract FarmBot is Owned, FarmbotERC20 {
         router = IUniswapV2Router02(_router);
     }
 
-    function updateFee(uint256 _feeNumerator, uint256 _feeDenominator) external onlyOwner {
-        feeNumerator = _feeNumerator;
-        feeDenominator = _feeDenominator;
+    function updateBounty(address _revoBounty) external onlyOwner {
+        revoBounty = IRevoBounty(_revoBounty);
     }
 
     function updatePaths(address[] calldata _path0, address[] calldata _path1) external onlyOwner {
@@ -131,52 +136,53 @@ contract FarmBot is Owned, FarmbotERC20 {
         stakingRewards.stake(tokenBalance);
     }
 
+    // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
+    function previewBounty() external view returns (TokenAmount[] memory) {
+        uint _leftoverBalance = rewardsToken.balanceOf(address(this));
+        uint _interestEarned = stakingRewards.earned(address(this));
+        TokenAmount[] memory _rewardsTokenBalances = new TokenAmount[](1);
+        _rewardsTokenBalances[0] = TokenAmount(rewardsToken, _interestEarned + _leftoverBalance);
+        return revoBounty.calculateFeeBounty(_rewardsTokenBalances);
+    }
+
+    // Figure out best-case scenario amount of token we can get and swap
+    function swapForTokenInPool(address[] storage _swapPath, uint _startTokenBudget, IERC20 _startToken, uint _deadline) private returns (uint256) {
+        if (_swapPath.length >= 2) {
+            uint[] memory _expectedAmountsOut = router.getAmountsOut(_startTokenBudget, _swapPath);
+            uint _expectedAmountOut = _expectedAmountsOut[_expectedAmountsOut.length - 1];
+            _startToken.approve(address(router), _startTokenBudget);
+            uint[] memory _swapResultAmounts = router.swapExactTokensForTokens(
+                _startTokenBudget,
+                _expectedAmountOut * slippageNumerator / slippageDenominator,
+                _swapPath,
+                address(this),
+                _deadline
+            );
+            return _swapResultAmounts[_swapResultAmounts.length - 1];
+        } else {
+            return _startTokenBudget;
+        }
+    }
+
     function claimRewards(uint deadline) public ensure(deadline) {
         stakingRewards.getReward();
-        uint256 tokenBalance = rewardsToken.balanceOf(address(this));
 
-        if (tokenBalance == 0) {
+        // compute bounty for the caller
+        uint256 _tokenBalance = rewardsToken.balanceOf(address(this));
+        if (_tokenBalance == 0) {
             return;
         }
-
-        uint256 feeAmount = tokenBalance * feeNumerator / feeDenominator;
-        uint256 halfTokens = (tokenBalance - feeAmount) / 2;
-
-        uint256 amountToken0;
-        // Figure out best-case scenario amount of token0 we can get and swap
-        if (path0.length >= 2) {
-            uint[] memory amountsOut = router.getAmountsOut(halfTokens, path0);
-            uint amountOut = amountsOut[amountsOut.length - 1];
-            rewardsToken.approve(address(router), halfTokens);
-            uint[] memory amountsSwapped = router.swapExactTokensForTokens(
-                halfTokens,
-                amountOut * slippageNumerator / slippageDenominator,
-                path0,
-                address(this),
-                deadline
-            );
-            amountToken0 = amountsSwapped[amountsSwapped.length - 1];
-        } else {
-            amountToken0 = halfTokens;
+        uint256 _bountyAmount;
+        {  // block is to prevent 'stack too deep' compilation error.
+            TokenAmount[] memory _interestAccrued = new TokenAmount[](1);
+            _interestAccrued[0] = TokenAmount(rewardsToken, _tokenBalance);
+            _bountyAmount = revoBounty.calculateFeeBounty(_interestAccrued)[0].amount;
         }
+        assert(_bountyAmount <= maxFeeNumerator * _tokenBalance / maxFeeDenominator);
+        uint256 _halfTokens = (_tokenBalance - _bountyAmount) / 2;
 
-        uint256 amountToken1;
-        // Figure out best-case scenario amount of token1 we can get and swap
-        if (path1.length >= 2) {
-            uint[] memory amountsOut = router.getAmountsOut(halfTokens, path1);
-            uint amountOut = amountsOut[amountsOut.length - 1];
-            rewardsToken.approve(address(router), halfTokens);
-            uint[] memory amountsSwapped = router.swapExactTokensForTokens(
-                halfTokens,
-                amountOut * slippageNumerator / slippageDenominator,
-                path1,
-                address(this),
-                deadline
-            );
-            amountToken1 = amountsSwapped[amountsSwapped.length - 1];
-        } else {
-            amountToken1 = halfTokens;
-        }
+        uint256 amountToken0 = swapForTokenInPool(path0, _halfTokens, rewardsToken, deadline);
+        uint256 amountToken1 = swapForTokenInPool(path1, _halfTokens, rewardsToken, deadline);
 
         // Approve the router to spend the bot's token0/token1
         stakingToken0.approve(address(router), amountToken0);
@@ -201,7 +207,8 @@ contract FarmBot is Owned, FarmbotERC20 {
         stakingRewards.stake(lpBalance);
         lpTotalBalance += lpBalance;
 
-        // Send incentive fee to sender
-        rewardsToken.transfer(msg.sender, feeAmount);
+        // Send bounty to caller
+        rewardsToken.transfer(msg.sender, _bountyAmount);
+        revoBounty.issueAdditionalBounty(msg.sender);
     }
 }
