@@ -64,16 +64,6 @@ contract FarmBot is Owned, FarmbotERC20 {
 
 	assert(_paths.length == _rewardsTokens.length);
 	paths = _paths;
-	/* for (uint i=0; i<_paths.length; i++) { */
-	/*     paths[i] = new address[][](2); */
-	/*     assert(_paths[i].length == 2); */
-	/*     for (uint j=0; j<_paths[i].length; j++) { */
-	/* 	paths[i][j] = new address[](_paths[i][j].length); */
-	/* 	for (uint k=0; k<_paths[i][j].length; k++) { */
-	/* 	    paths[i][j][k] = _paths[i][j][k]; */
-	/* 	} */
-	/*     } */
-	/* } */
 
         revoBounty = IRevoBounty(_revoBounty);
 
