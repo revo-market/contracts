@@ -17,7 +17,9 @@ contract FarmBot is Owned, FarmbotERC20 {
     IMoolaStakingRewards public stakingRewards;
 
     // List of rewards tokens. The first token in this list is assumed to be the primary token;
-    // the rest correspond to the staking reward contract's external reward tokens.
+    // the rest correspond to the staking reward contract's external reward tokens. The order of these tokens
+    // is very important; the first must correspond to the MoolaStakingRewards contract's "native" reward token,
+    // and the rest must correspond to its "external" tokens, in the same order as they appear in the contract.
     IERC20[] public rewardsTokens;
 
     IUniswapV2Pair public stakingToken; // LP that's being staked
@@ -62,7 +64,10 @@ contract FarmBot is Owned, FarmbotERC20 {
 	    rewardsTokens.push(IERC20(_rewardsTokens[i]));
 	}
 
-	assert(_paths.length == _rewardsTokens.length);
+	require(
+            _paths.length == _rewardsTokens.length,
+	    "Parameters _paths and _rewardsTokens must have equal length"
+	);
 	paths = _paths;
 
         revoBounty = IRevoBounty(_revoBounty);
@@ -160,6 +165,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 	_interestEarned[0] = stakingRewards.earned(address(this));
 
 	uint[] memory _externalEarned = stakingRewards.earnedExternal(address(this));
+	require(_externalEarned.length == rewardsTokens.length - 1, "Incorrect amount of external rewards tokens");
 	for (uint i=0; i < _externalEarned.length; i++) {
 	    _interestEarned[i+1] = _externalEarned[i];
 	}
@@ -208,7 +214,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 	    TokenAmount[] memory _feeBounties = revoBounty.calculateFeeBounty(_interestAccrued);
 	    for (uint i=0; i < _feeBounties.length; i++) {
 		_bountyAmounts[i] = _feeBounties[i].amount;
-		assert(_bountyAmounts[i] <= maxFeeNumerator * _tokenBalances[i] / maxFeeDenominator);
+		require(_bountyAmounts[i] <= maxFeeNumerator * _tokenBalances[i] / maxFeeDenominator, "Bounty amount too high");
 	    }
         }
 
