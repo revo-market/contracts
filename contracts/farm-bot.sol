@@ -4,7 +4,7 @@ pragma solidity >=0.5.0 <0.9.0;
 import "hardhat/console.sol";
 
 import "./ubeswap-farming/contracts/StakingRewards.sol";
-import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
+import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router01.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./ubeswap-farming/contracts/Owned.sol";
 import "./FarmbotERC20.sol";
@@ -21,7 +21,7 @@ contract FarmBot is Owned, FarmbotERC20 {
     IERC20 public stakingToken0; // LP token0
     IERC20 public stakingToken1; // LP token1
 
-    IUniswapV2Router02 public router; // Router address
+    IUniswapV2Router01 public router; // Router address
 
     // Paths for swapping; can be updated by owner
     address[] public path0; // Path to use when swapping rewardsToken to token0. If len < 2, we assume rewardsToken == token0
@@ -64,7 +64,7 @@ contract FarmBot is Owned, FarmbotERC20 {
         path1 = _path1;
         symbol = _symbol;
 
-        router = IUniswapV2Router02(_router);
+        router = IUniswapV2Router01(_router);
     }
 
     function updateBounty(address _revoBounty) external onlyOwner {

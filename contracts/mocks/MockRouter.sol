@@ -1,8 +1,14 @@
 pragma solidity ^0.8.0;
 
 import "../ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router01.sol";
+import "./MockLPToken.sol";
 
 contract MockRouter is IUniswapV2Router01 {
+    MockLPToken lpToken;
+    constructor(address _lpToken) {
+        lpToken = MockLPToken(_lpToken);
+    }
+
     function factory() external override pure returns (address) {
         require(false, "Shouldn't use factory for mock router");
         return address(0);
@@ -24,6 +30,7 @@ contract MockRouter is IUniswapV2Router01 {
         amountA = amountADesired;
         amountB = amountBDesired;
         liquidity = mockLiquidity;
+        // TODO send LP to sender...
     }
     function removeLiquidity(
         address tokenA,
