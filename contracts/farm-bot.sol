@@ -239,7 +239,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 	stakingToken1.approve(address(router), _totalAmountToken1);
 	// Actually add liquidity
 	router.addLiquidity(
-            address(stakingToken0),
+	    address(stakingToken0),
 	    address(stakingToken1),
 	    _totalAmountToken0,
 	    _totalAmountToken1,
