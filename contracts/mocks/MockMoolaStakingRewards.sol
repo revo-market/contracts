@@ -1,17 +1,25 @@
 pragma solidity ^0.8.0;
 
 import "../openzeppelin-solidity/contracts/IERC20.sol";
-import "../ubeswap-farming/contracts/StakingRewards.sol";
+import "../IMoolaStakingRewards.sol";
 
-contract MockStakingRewardsSingleToken is IStakingRewards {
+contract MockMoolaStakingRewards is IMoolaStakingRewards {
     IERC20 public rewardsToken;
+    IERC20[] public externalRewardsTokens;
+
     IERC20 public stakingToken;
+
     constructor(
         address _rewardsToken,
+	address[] memory _externalRewardsTokens,
         address _stakingToken
     ) {
-        rewardsToken = IERC20(rewardsToken);
-        stakingToken = IERC20(stakingToken);
+        rewardsToken = IERC20(_rewardsToken);
+        stakingToken = IERC20(_stakingToken);
+
+	for (uint i=0; i<_externalRewardsTokens.length; i++) {
+	    externalRewardsTokens.push(IERC20(_externalRewardsTokens[i]));
+	}
     }
 
     // Views
@@ -33,6 +41,14 @@ contract MockStakingRewardsSingleToken is IStakingRewards {
     }
     function earned(address account) external override view returns (uint256) {
         return amountEarned;
+    }
+
+    uint256[] public amountEarnedExternal;
+    function setAmountEarnedExternal(uint256[] memory _amountEarnedExternal) public {
+        amountEarnedExternal = _amountEarnedExternal;
+    }
+    function earnedExternal(address account) external override returns (uint256[] memory) {
+        return amountEarnedExternal;
     }
 
     function getRewardForDuration() external override view returns (uint256) {
@@ -66,10 +82,14 @@ contract MockStakingRewardsSingleToken is IStakingRewards {
         require(staked[msg.sender] >= amount);
         staked[msg.sender] -= amount;
         stakingToken.transfer(msg.sender, amount);
+	this.getReward();
     }
 
     function getReward() external override {
         rewardsToken.transfer(msg.sender, amountEarned);
+	for (uint i=0; i<externalRewardsTokens.length; i++) {
+	    externalRewardsTokens[i].transfer(msg.sender, amountEarnedExternal[i]);
+	}
     }
 
     function exit() external override {
