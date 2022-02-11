@@ -8,12 +8,13 @@ import {
   FarmBot__factory
 } from "../typechain";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import {BigNumber} from "ethers";
 
 const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
-  let owner: SignerWithAddress, reserve: SignerWithAddress,
+  let owner: SignerWithAddress, reserve: SignerWithAddress, investor: SignerWithAddress,
     bountyContract: MockRevoBounty,
     token0Contract: MockERC20, token1Contract: MockERC20,
     rewardsToken0Contract: MockERC20, rewardsToken1Contract: MockERC20, rewardsToken2Contract: MockERC20,
@@ -23,7 +24,7 @@ describe('Farm bot tests', () => {
     stakingToken0Address: string, stakingToken1Address: string,
     farmBotFactory: FarmBot__factory
   beforeEach(async () => {
-    [owner, reserve] = await ethers.getSigners()
+    [owner, reserve, investor] = await ethers.getSigners()
     const revoBountyFactory = await ethers.getContractFactory('MockRevoBounty')
     bountyContract = await revoBountyFactory.deploy()
 
@@ -87,5 +88,48 @@ describe('Farm bot tests', () => {
     expect(!!farmBotContract.address).not.to.be.false
   })
 
-  it('')
+  it('claimRewards: works with 1-pool swaps from rewards to staking tokens', async () => {
+    const farmBotContract = (await farmBotFactory.deploy(
+      owner.address,
+      reserve.address,
+      stakingRewardsContract.address,
+      lpTokenContract.address,
+      bountyContract.address,
+      routerContract.address,
+      [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+      [
+        [
+          [rewardsToken0Contract.address, stakingToken0Address],
+          [rewardsToken0Contract.address, stakingToken1Address]
+        ],
+        [
+          [rewardsToken1Contract.address, stakingToken0Address],
+          [rewardsToken1Contract.address, stakingToken1Address]
+        ],
+        [
+          [rewardsToken2Contract.address, stakingToken0Address],
+          [rewardsToken2Contract.address, stakingToken1Address]
+        ]
+      ],
+      'FP'
+    )).connect(investor)
+
+    // prep investor
+    await lpTokenContract.mint(investor.address, 1000)
+    expect(await lpTokenContract.balanceOf(investor.address)).to.equal(1000)  // sanity check
+
+    await lpTokenContract.connect(investor).approve(farmBotContract.address, 1000)
+    await farmBotContract.deposit(1000)
+    expect(await farmBotContract.balanceOf(investor.address)).to.equal(1000)
+
+    // load rewards
+    await stakingRewardsContract.setAmountEarnedExternal([1000, 1000, 1000])
+    await rewardsToken0Contract.mint(stakingRewardsContract.address, 1000);
+    await rewardsToken1Contract.mint(stakingRewardsContract.address, 1000)
+    await rewardsToken2Contract.mint(stakingRewardsContract.address, 1000)
+
+    // claim rewards
+    const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(60)
+    await farmBotContract.claimRewards(arbitraryDeadline) // fixme getting arithmetic under/overflow error here.
+  })
 })
