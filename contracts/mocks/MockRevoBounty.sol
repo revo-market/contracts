@@ -13,7 +13,11 @@ contract MockRevoBounty is IRevoBounty {
         bounties.pop();
     }
 
-    function calculateFeeBounty(TokenAmount[] calldata interestAccrued) external override view returns (TokenAmount[] memory) {
+    function calculateBountyFee(TokenAmount[] calldata interestAccrued) external override view returns (TokenAmount[] memory) {
+        return bounties;
+    }
+
+    function calculateReserveFee(TokenAmount[] calldata interestAccrued) external override view returns (TokenAmount[] memory) {
         return bounties;
     }
 

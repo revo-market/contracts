@@ -43,6 +43,8 @@ contract FarmBot is Owned, FarmbotERC20 {
     uint256 public maxFeeNumerator = 40;
     uint256 public maxFeeDenominator = 1000;
 
+    address public reserveAddress;
+
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'FarmBot: EXPIRED');
         _;
@@ -50,6 +52,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 
     constructor(
         address _owner,
+	address _reserveAddress,
         address _stakingRewards,
 	address _stakingToken,
         address _revoBounty,
@@ -76,6 +79,7 @@ contract FarmBot is Owned, FarmbotERC20 {
         stakingToken0 = IERC20(stakingToken.token0());
         stakingToken1 = IERC20(stakingToken.token1());
 
+	reserveAddress = _reserveAddress;
 
         symbol = _symbol;
 
@@ -175,7 +179,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 	    _rewardsTokenBalances[i] = TokenAmount(rewardsTokens[i], _interestEarned[i] + _leftoverBalances[i]);
 	}
 
-        return revoBounty.calculateFeeBounty(_rewardsTokenBalances);
+        return revoBounty.calculateBountyFee(_rewardsTokenBalances);
     }
 
     // Figure out best-case scenario amount of token we can get and swap
@@ -202,45 +206,50 @@ contract FarmBot is Owned, FarmbotERC20 {
 
         // compute bounty for the caller
         uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
-	TokenAmount[] memory _interestAccrued = new TokenAmount[](rewardsTokens.length);
-
-	for (uint i=0; i< rewardsTokens.length; i++) {
-	    _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
-	    _interestAccrued[i] = TokenAmount(rewardsTokens[i], _tokenBalances[i]);
-	}
-
 	uint256[] memory _bountyAmounts = new uint256[](rewardsTokens.length);
+	uint256[] memory _reserveAmounts = new uint256[](rewardsTokens.length);
+
         {  // block is to prevent 'stack too deep' compilation error.
-	    TokenAmount[] memory _feeBounties = revoBounty.calculateFeeBounty(_interestAccrued);
-	    for (uint i=0; i < _feeBounties.length; i++) {
-		_bountyAmounts[i] = _feeBounties[i].amount;
+	    TokenAmount[] memory _interestAccrued = new TokenAmount[](rewardsTokens.length);
+	    for (uint i=0; i< rewardsTokens.length; i++) {
+		_tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
+		_interestAccrued[i] = TokenAmount(rewardsTokens[i], _tokenBalances[i]);
+	    }
+
+	    TokenAmount[] memory _bountyFees = revoBounty.calculateBountyFee(_interestAccrued);
+	    TokenAmount[] memory _reserveFees = revoBounty.calculateReserveFee(_interestAccrued);
+	    require(_bountyFees.length == _reserveFees.length, "Got conflicting results from RevoBounty");
+	    for (uint i=0; i < _bountyFees.length; i++) {
+		_bountyAmounts[i] = _bountyFees[i].amount;
+		_reserveAmounts[i] = _reserveFees[i].amount;
 		require(_bountyAmounts[i] <= maxFeeNumerator * _tokenBalances[i] / maxFeeDenominator, "Bounty amount too high");
 	    }
         }
 
-	uint256 _totalAmountToken0 = 0;
-	uint256 _totalAmountToken1 = 0;
-	for (uint i=0; i < _bountyAmounts.length; i++) {
-	    uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i]) / 2;
-	    _totalAmountToken0 += swapForTokenInPool(paths[i][0], _halfTokens, rewardsTokens[i], deadline);
-	    _totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
+        {  // block is to prevent 'stack too deep' compilation error.
+	    uint256 _totalAmountToken0 = 0;
+	    uint256 _totalAmountToken1 = 0;
+	    for (uint i=0; i < _bountyAmounts.length; i++) {
+		uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i] - _reserveAmounts[i]) / 2;
+		_totalAmountToken0 += swapForTokenInPool(paths[i][0], _halfTokens, rewardsTokens[i], deadline);
+		_totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
+	    }
+
+	    // Approve the router to spend the bot's token0/token1
+	    stakingToken0.approve(address(router), _totalAmountToken0);
+	    stakingToken1.approve(address(router), _totalAmountToken1);
+	    // Actually add liquidity
+	    router.addLiquidity(
+                address(stakingToken0),
+                address(stakingToken1),
+                _totalAmountToken0,
+                _totalAmountToken1,
+                _totalAmountToken0 * slippageNumerator / slippageDenominator,
+                _totalAmountToken1 * slippageNumerator / slippageDenominator,
+                address(this),
+                deadline
+            );
 	}
-
-        // Approve the router to spend the bot's token0/token1
-        stakingToken0.approve(address(router), _totalAmountToken0);
-        stakingToken1.approve(address(router), _totalAmountToken1);
-        // Actually add liquidity
-        router.addLiquidity(
-            address(stakingToken0),
-            address(stakingToken1),
-            _totalAmountToken0,
-            _totalAmountToken1,
-            _totalAmountToken0 * slippageNumerator / slippageDenominator,
-            _totalAmountToken1 * slippageNumerator / slippageDenominator,
-            address(this),
-            deadline
-        );
-
 
         // How much LP we have to re-invest
         uint256 lpBalance = stakingToken.balanceOf(address(this));
@@ -253,6 +262,7 @@ contract FarmBot is Owned, FarmbotERC20 {
         // Send bounty to caller
 	for (uint i=0; i < rewardsTokens.length; i++) {
 	    rewardsTokens[i].transfer(msg.sender, _bountyAmounts[i]);
+	    rewardsTokens[i].transfer(reserveAddress, _reserveAmounts[i]);
 	}
         revoBounty.issueAdditionalBounty(msg.sender);
     }
