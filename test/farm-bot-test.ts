@@ -5,8 +5,8 @@ const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
-  it('does stuff', async () => {
-    const [owner] = await ethers.getSigners()
+  it('Able to deploy farm bot', async () => {
+    const [owner, reserve] = await ethers.getSigners()
     const revoBountyFactory = await ethers.getContractFactory('MockRevoBounty')
     const bountyContract: MockRevoBounty = await revoBountyFactory.deploy()
 
@@ -52,6 +52,7 @@ describe('Farm bot tests', () => {
     const farmBotFactory = await ethers.getContractFactory('FarmBot')
     const farmBotContract: FarmBot = await farmBotFactory.deploy( // fixme 'transaction reverted without a reason string' error here
       owner.address,
+      reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
       bountyContract.address,
@@ -65,7 +66,6 @@ describe('Farm bot tests', () => {
       'FP'
     )
 
-    expect(1).to.equal(1)
-    expect(farmBotContract.address).not.to.be.false
+    expect(!!farmBotContract.address).not.to.be.false
   })
 })
