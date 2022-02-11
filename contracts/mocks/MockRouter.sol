@@ -43,7 +43,7 @@ contract MockRouter is IUniswapV2Router01 {
     ) external override returns (uint amountA, uint amountB) {
         amountA = amountAMin;
         amountB = amountBMin;
-        lpToken.burn(liquidity);
+        lpToken.burn(msg.sender, liquidity);
     }
     function removeLiquidityWithPermit(
         address tokenA,

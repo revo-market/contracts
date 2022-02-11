@@ -8,4 +8,8 @@ contract MockERC20 is ERC20 {
     function mint(address _account, uint _amount) public {
         _mint(_account, _amount);
     }
+
+    function burn(address _account, uint _amount) public {
+        _burn(_account, _amount);
+    }
 }
