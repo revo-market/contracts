@@ -222,7 +222,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 	    for (uint i=0; i < _bountyFees.length; i++) {
 		_bountyAmounts[i] = _bountyFees[i].amount;
 		_reserveAmounts[i] = _reserveFees[i].amount;
-		require(_bountyAmounts[i] <= maxFeeNumerator * _tokenBalances[i] / maxFeeDenominator, "Bounty amount too high");
+		require(_bountyAmounts[i] + _reserveAmounts[i] <= maxFeeNumerator * _tokenBalances[i] / maxFeeDenominator, "Bounty amount too high");
 	    }
         }
 
@@ -234,19 +234,19 @@ contract FarmBot is Owned, FarmbotERC20 {
 	    _totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
 	}
 
-	// Approve the router to spend the bot's token0/token1
-	stakingToken0.approve(address(router), _totalAmountToken0);
-	stakingToken1.approve(address(router), _totalAmountToken1);
-	// Actually add liquidity
-	router.addLiquidity(
-	    address(stakingToken0),
-	    address(stakingToken1),
-	    _totalAmountToken0,
-	    _totalAmountToken1,
-	    _totalAmountToken0 * slippageNumerator / slippageDenominator,
-	    _totalAmountToken1 * slippageNumerator / slippageDenominator,
-	    address(this),
-	    deadline
+        // Approve the router to spend the bot's token0/token1
+        stakingToken0.approve(address(router), _totalAmountToken0);
+        stakingToken1.approve(address(router), _totalAmountToken1);
+        // Actually add liquidity
+        router.addLiquidity(
+            address(stakingToken0),
+            address(stakingToken1),
+            _totalAmountToken0,
+            _totalAmountToken1,
+            _totalAmountToken0 * slippageNumerator / slippageDenominator,
+            _totalAmountToken1 * slippageNumerator / slippageDenominator,
+            address(this),
+            deadline
         );
 
         // How much LP we have to re-invest
