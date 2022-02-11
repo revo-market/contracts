@@ -226,30 +226,28 @@ contract FarmBot is Owned, FarmbotERC20 {
 	    }
         }
 
-        {  // block is to prevent 'stack too deep' compilation error.
-	    uint256 _totalAmountToken0 = 0;
-	    uint256 _totalAmountToken1 = 0;
-	    for (uint i=0; i < _bountyAmounts.length; i++) {
-		uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i] - _reserveAmounts[i]) / 2;
-		_totalAmountToken0 += swapForTokenInPool(paths[i][0], _halfTokens, rewardsTokens[i], deadline);
-		_totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
-	    }
-
-	    // Approve the router to spend the bot's token0/token1
-	    stakingToken0.approve(address(router), _totalAmountToken0);
-	    stakingToken1.approve(address(router), _totalAmountToken1);
-	    // Actually add liquidity
-	    router.addLiquidity(
-                address(stakingToken0),
-                address(stakingToken1),
-                _totalAmountToken0,
-                _totalAmountToken1,
-                _totalAmountToken0 * slippageNumerator / slippageDenominator,
-                _totalAmountToken1 * slippageNumerator / slippageDenominator,
-                address(this),
-                deadline
-            );
+	uint256 _totalAmountToken0 = 0;
+	uint256 _totalAmountToken1 = 0;
+	for (uint i=0; i < _bountyAmounts.length; i++) {
+	    uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i] - _reserveAmounts[i]) / 2;
+	    _totalAmountToken0 += swapForTokenInPool(paths[i][0], _halfTokens, rewardsTokens[i], deadline);
+	    _totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
 	}
+
+	// Approve the router to spend the bot's token0/token1
+	stakingToken0.approve(address(router), _totalAmountToken0);
+	stakingToken1.approve(address(router), _totalAmountToken1);
+	// Actually add liquidity
+	router.addLiquidity(
+            address(stakingToken0),
+	    address(stakingToken1),
+	    _totalAmountToken0,
+	    _totalAmountToken1,
+	    _totalAmountToken0 * slippageNumerator / slippageDenominator,
+	    _totalAmountToken1 * slippageNumerator / slippageDenominator,
+	    address(this),
+	    deadline
+        );
 
         // How much LP we have to re-invest
         uint256 lpBalance = stakingToken.balanceOf(address(this));
