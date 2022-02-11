@@ -132,7 +132,6 @@ contract FarmBot is Owned, FarmbotERC20 {
     }
 
     function withdraw(uint256 _lpAmount) public {
-        // todo might need a lock on this
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
         require(balanceOf[msg.sender] >= _fpAmount, "Cannot withdraw more than the total balance of the owner");
 
