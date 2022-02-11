@@ -26,7 +26,7 @@ contract FarmBot is Owned, FarmbotERC20 {
     IERC20 public stakingToken0; // LP token0
     IERC20 public stakingToken1; // LP token1
 
-    IUniswapV2Router01 public router; // Router address
+    IUniswapV2Router02 public router; // Router address
 
     // Paths for swapping; can be updated by owner
     // Paths to use when swapping rewardsTokens for token0/token1. Each top-level entry represents a pair of paths for each rewardsToken.
@@ -79,7 +79,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 
         symbol = _symbol;
 
-        router = IUniswapV2Router01(_router);
+        router = IUniswapV2Router02(_router);
     }
 
     function updateBounty(address _revoBounty) external onlyOwner {
