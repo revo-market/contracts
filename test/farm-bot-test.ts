@@ -1,27 +1,37 @@
 import {expect} from "chai"
-import {FarmBot, MockERC20, MockLPToken, MockRevoBounty, MockRouter, MockMoolaStakingRewards} from "../typechain";
+import {
+  MockERC20,
+  MockLPToken,
+  MockRevoBounty,
+  MockRouter,
+  MockMoolaStakingRewards,
+  FarmBot__factory
+} from "../typechain";
+import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
 const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
-  let owner, reserve,
+  let owner: SignerWithAddress, reserve: SignerWithAddress,
+    bountyContract: MockRevoBounty,
     token0Contract: MockERC20, token1Contract: MockERC20,
+    rewardsToken0Contract: MockERC20, rewardsToken1Contract: MockERC20, rewardsToken2Contract: MockERC20,
     lpTokenContract: MockLPToken,
     stakingRewardsContract: MockMoolaStakingRewards,
     routerContract: MockRouter,
     stakingToken0Address: string, stakingToken1Address: string,
-    farmBotContract: FarmBot
+    farmBotFactory: FarmBot__factory
   beforeEach(async () => {
     [owner, reserve] = await ethers.getSigners()
     const revoBountyFactory = await ethers.getContractFactory('MockRevoBounty')
-    const bountyContract: MockRevoBounty = await revoBountyFactory.deploy()
+    bountyContract = await revoBountyFactory.deploy()
 
     const erc20Factory = await ethers.getContractFactory('MockERC20')
 
-    const rewardsToken0Contract: MockERC20 = await erc20Factory.deploy('Mock rewards token 0', 'RWD0')
-    const rewardsToken1Contract: MockERC20 = await erc20Factory.deploy('Mock rewards token 1', 'RWD1')
-    const rewardsToken2Contract: MockERC20 = await erc20Factory.deploy('Mock rewards token 2', 'RWD2')
+    rewardsToken0Contract = await erc20Factory.deploy('Mock rewards token 0', 'RWD0')
+    rewardsToken1Contract = await erc20Factory.deploy('Mock rewards token 1', 'RWD1')
+    rewardsToken2Contract = await erc20Factory.deploy('Mock rewards token 2', 'RWD2')
 
     token0Contract = await erc20Factory.deploy('Mock token 0', 'T0')
     token1Contract = await erc20Factory.deploy('Mock token 1', 'T1')
@@ -56,8 +66,10 @@ describe('Farm bot tests', () => {
     expect(await stakingRewardsContract.stakingToken())
       .to.equal(lpTokenContract.address)
 
-    const farmBotFactory = await ethers.getContractFactory('FarmBot')
-    farmBotContract = await farmBotFactory.deploy(
+    farmBotFactory = await ethers.getContractFactory('FarmBot')
+  })
+  it('Able to deploy farm bot to local test chain', async () => {
+    const farmBotContract = await farmBotFactory.deploy(
       owner.address,
       reserve.address,
       stakingRewardsContract.address,
@@ -72,8 +84,8 @@ describe('Farm bot tests', () => {
       ],
       'FP'
     )
-  })
-  it('Able to deploy farm bot to local test chain', async () => {
     expect(!!farmBotContract.address).not.to.be.false
   })
+
+  it('')
 })
