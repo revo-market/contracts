@@ -50,7 +50,7 @@ describe('Farm bot tests', () => {
       .to.equal(lpTokenContract.address)
 
     const farmBotFactory = await ethers.getContractFactory('FarmBot')
-    const farmBotContract: FarmBot = await farmBotFactory.deploy( // fixme 'transaction reverted without a reason string' error here
+    const farmBotContract: FarmBot = await farmBotFactory.deploy(
       owner.address,
       reserve.address,
       stakingRewardsContract.address,
