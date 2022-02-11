@@ -5,8 +5,15 @@ const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
-  it('Able to deploy farm bot to local test chain', async () => {
-    const [owner, reserve] = await ethers.getSigners()
+  let owner, reserve,
+    token0Contract: MockERC20, token1Contract: MockERC20,
+    lpTokenContract: MockLPToken,
+    stakingRewardsContract: MockMoolaStakingRewards,
+    routerContract: MockRouter,
+    stakingToken0Address: string, stakingToken1Address: string,
+    farmBotContract: FarmBot
+  beforeEach(async () => {
+    [owner, reserve] = await ethers.getSigners()
     const revoBountyFactory = await ethers.getContractFactory('MockRevoBounty')
     const bountyContract: MockRevoBounty = await revoBountyFactory.deploy()
 
@@ -16,11 +23,11 @@ describe('Farm bot tests', () => {
     const rewardsToken1Contract: MockERC20 = await erc20Factory.deploy('Mock rewards token 1', 'RWD1')
     const rewardsToken2Contract: MockERC20 = await erc20Factory.deploy('Mock rewards token 2', 'RWD2')
 
-    const token0Contract: MockERC20 = await erc20Factory.deploy('Mock token 0', 'T0')
-    const token1Contract: MockERC20 = await erc20Factory.deploy('Mock token 1', 'T1')
+    token0Contract = await erc20Factory.deploy('Mock token 0', 'T0')
+    token1Contract = await erc20Factory.deploy('Mock token 1', 'T1')
 
     const lpFactory = await ethers.getContractFactory('MockLPToken')
-    const lpTokenContract: MockLPToken = await lpFactory.deploy(
+    lpTokenContract = await lpFactory.deploy(
       'Mock staking token', // name
       'LP', // symbol
       token0Contract.address,
@@ -28,20 +35,20 @@ describe('Farm bot tests', () => {
     )
 
     const stakingRewardsFactory = await ethers.getContractFactory('MockMoolaStakingRewards')
-    const stakingRewardsContract: MockMoolaStakingRewards = await stakingRewardsFactory.deploy(
+    stakingRewardsContract = await stakingRewardsFactory.deploy(
       token0Contract.address, // rewards token
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
       lpTokenContract.address
     )
 
     const routerFactory = await ethers.getContractFactory('MockRouter')
-    const routerContract: MockRouter = await routerFactory.deploy(lpTokenContract.address)
+    routerContract = await routerFactory.deploy(lpTokenContract.address)
 
     // sanity check mock LP contract
-    const stakingToken0 = await lpTokenContract.token0()
-    expect(stakingToken0).to.equal(token0Contract.address)
-    const stakingToken1 = await lpTokenContract.token1()
-    expect(stakingToken1).to.equal(token1Contract.address)
+    stakingToken0Address = await lpTokenContract.token0()
+    expect(stakingToken0Address).to.equal(token0Contract.address)
+    stakingToken1Address = await lpTokenContract.token1()
+    expect(stakingToken1Address).to.equal(token1Contract.address)
 
     // sanity check rewards
     expect(await stakingRewardsContract.rewardsToken())
@@ -50,7 +57,7 @@ describe('Farm bot tests', () => {
       .to.equal(lpTokenContract.address)
 
     const farmBotFactory = await ethers.getContractFactory('FarmBot')
-    const farmBotContract: FarmBot = await farmBotFactory.deploy(
+    farmBotContract = await farmBotFactory.deploy(
       owner.address,
       reserve.address,
       stakingRewardsContract.address,
@@ -59,13 +66,14 @@ describe('Farm bot tests', () => {
       routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
       [
-	[[],[]],
-	[[],[]],
-	[[],[]]
+        [[],[]],
+        [[],[]],
+        [[],[]]
       ],
       'FP'
     )
-
+  })
+  it('Able to deploy farm bot to local test chain', async () => {
     expect(!!farmBotContract.address).not.to.be.false
   })
 })
