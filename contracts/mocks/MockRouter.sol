@@ -30,7 +30,7 @@ contract MockRouter is IUniswapV2Router01 {
         amountA = amountADesired;
         amountB = amountBDesired;
         liquidity = mockLiquidity;
-        // TODO send LP to sender...
+        lpToken.mint(msg.sender, mockLiquidity);
     }
     function removeLiquidity(
         address tokenA,
@@ -43,6 +43,7 @@ contract MockRouter is IUniswapV2Router01 {
     ) external override returns (uint amountA, uint amountB) {
         amountA = amountAMin;
         amountB = amountBMin;
+        lpToken.burn(liquidity);
     }
     function removeLiquidityWithPermit(
         address tokenA,
