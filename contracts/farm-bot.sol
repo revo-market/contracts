@@ -29,10 +29,6 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
     IUniswapV2Router02 public router; // Router address
 
-    // Paths for swapping; can be updated by admin
-    // Paths to use when swapping rewardsTokens for token0/token1. Each top-level entry represents a pair of paths for each rewardsToken.
-    address[][2][] public paths;
-
     // Acceptable slippage when swapping/minting LP; can be updated by admin
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
@@ -58,7 +54,6 @@ contract FarmBot is FarmbotERC20, AccessControl {
         address _revoBounty,
         address _router,
 	address[] memory _rewardsTokens,
-	address[][2][] memory _paths,
         string memory _symbol
     ) {
         stakingRewards = IMoolaStakingRewards(_stakingRewards);
@@ -66,12 +61,6 @@ contract FarmBot is FarmbotERC20, AccessControl {
 	for (uint i=0; i<_rewardsTokens.length; i++) {
 	    rewardsTokens.push(IERC20(_rewardsTokens[i]));
 	}
-
-	require(
-            _paths.length == _rewardsTokens.length,
-	    "Parameters _paths and _rewardsTokens must have equal length"
-	);
-	paths = _paths;
 
         revoBounty = IRevoBounty(_revoBounty);
 
@@ -90,10 +79,6 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
     function updateBounty(address _revoBounty) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revoBounty = IRevoBounty(_revoBounty);
-    }
-
-    function updatePaths(address[][2][] memory _paths) external onlyRole(DEFAULT_ADMIN_ROLE) {
-	paths = _paths;
     }
 
     function updateSlippage(uint256 _slippageNumerator, uint256 _slippageDenominator) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -184,14 +169,18 @@ contract FarmBot is FarmbotERC20, AccessControl {
     }
 
     // Figure out best-case scenario amount of token we can get and swap
-    function swapForTokenInPool(address[] storage _swapPath, uint _startTokenBudget, IERC20 _startToken, uint _deadline) private returns (uint256) {
+    function swapForTokenInPool(
+        address[] memory _swapPath,
+	uint _startTokenBudget,
+	IERC20 _startToken,
+	uint _minAmountOut,
+	uint _deadline
+    ) private returns (uint256) {
         if (_swapPath.length >= 2) {
-            uint[] memory _expectedAmountsOut = router.getAmountsOut(_startTokenBudget, _swapPath);
-            uint _expectedAmountOut = _expectedAmountsOut[_expectedAmountsOut.length - 1];
             _startToken.approve(address(router), _startTokenBudget);
             uint[] memory _swapResultAmounts = router.swapExactTokensForTokens(
                 _startTokenBudget,
-                _expectedAmountOut * slippageNumerator / slippageDenominator,
+                _minAmountOut * slippageNumerator / slippageDenominator,
                 _swapPath,
                 address(this),
                 _deadline
@@ -206,14 +195,16 @@ contract FarmBot is FarmbotERC20, AccessControl {
         uint256[] memory _tokenBalances,
 	uint256[] memory _bountyAmounts,
 	uint256[] memory _reserveAmounts,
-	uint deadline
+	address[][2][] memory _paths,
+	uint[][2] memory _minAmountsOut,
+	uint _deadline
     ) private {
 	uint256 _totalAmountToken0 = 0;
 	uint256 _totalAmountToken1 = 0;
 	for (uint i=0; i < _bountyAmounts.length; i++) {
 	    uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i] - _reserveAmounts[i]) / 2;
-	    _totalAmountToken0 += swapForTokenInPool(paths[i][0], _halfTokens, rewardsTokens[i], deadline);
-	    _totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
+	    _totalAmountToken0 += swapForTokenInPool(_paths[i][0], _halfTokens, rewardsTokens[i], _minAmountsOut[i][0], _deadline);
+	    _totalAmountToken1 += swapForTokenInPool(_paths[i][1], _halfTokens, rewardsTokens[i], _minAmountsOut[i][1], _deadline);
 	}
 
         // Approve the router to spend the bot's token0/token1
@@ -228,11 +219,29 @@ contract FarmBot is FarmbotERC20, AccessControl {
             _totalAmountToken0 * slippageNumerator / slippageDenominator,
             _totalAmountToken1 * slippageNumerator / slippageDenominator,
             address(this),
-            deadline
+            _deadline
         );
     }
 
-    function claimRewards(uint deadline) public ensure(deadline) onlyRole(COMPOUNDER_ROLE) {
+    // The _paths parameter represents a list of paths to use when swapping each rewards token to token0/token1 of the LP.
+    // Each top-level entry represents a pair of paths for each rewardsToken.
+    //
+    // The _minAmountsOut parameter represents a list of minimum amounts for token0/token1 we expect to receive when swapping
+    // each rewardsToken. If we do not receieve at least this much of token0/token1 for some swap, the transaction will revert.
+    // If a path corresponding to some swap has length < 2, the minimum amount specified for that swap will be ignored.
+    function claimRewards(
+        address[][2][] memory _paths,
+	uint[][2] memory _minAmountsOut,
+	uint _deadline
+    ) public ensure(_deadline) onlyRole(COMPOUNDER_ROLE) {
+	require(
+            _paths.length == rewardsTokens.length,
+	    "Parameter _paths must have length equal to rewardsTokens"
+	);
+	require(
+            _minAmountsOut.length == rewardsTokens.length,
+	    "Parameter _minAmountsOut must have length equal to rewardsTokens"
+	);
 
         stakingRewards.getReward();
 
@@ -259,7 +268,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         }
 
 	// Perform swaps and add liquidity
-	addLiquidity(_tokenBalances, _bountyAmounts, _reserveAmounts, deadline);
+	addLiquidity(_tokenBalances, _bountyAmounts, _reserveAmounts, _paths, _minAmountsOut, _deadline);
 
         // How much LP we have to re-invest
         uint256 lpBalance = stakingToken.balanceOf(address(this));
