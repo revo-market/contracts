@@ -3,15 +3,16 @@ pragma solidity >=0.5.0 <0.9.0;
 
 import "hardhat/console.sol";
 
-import "./ubeswap-farming/contracts/Owned.sol";
 import "./IMoolaStakingRewards.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./FarmbotERC20.sol";
 import "./IRevoBounty.sol";
+import "./openzeppelin-solidity/contracts/AccessControl.sol";
 
+contract FarmBot is FarmbotERC20, AccessControl {
+    bytes32 public constant COMPOUNDER_ROLE = keccak256("COMPOUNDER_ROLE");
 
-contract FarmBot is Owned, FarmbotERC20 {
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
 
     IMoolaStakingRewards public stakingRewards;
@@ -28,11 +29,11 @@ contract FarmBot is Owned, FarmbotERC20 {
 
     IUniswapV2Router02 public router; // Router address
 
-    // Paths for swapping; can be updated by owner
+    // Paths for swapping; can be updated by admin
     // Paths to use when swapping rewardsTokens for token0/token1. Each top-level entry represents a pair of paths for each rewardsToken.
     address[][2][] public paths;
 
-    // Acceptable slippage when swapping/minting LP; can be updated by owner
+    // Acceptable slippage when swapping/minting LP; can be updated by admin
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
 
@@ -51,7 +52,6 @@ contract FarmBot is Owned, FarmbotERC20 {
     }
 
     constructor(
-        address _owner,
 	address _reserveAddress,
         address _stakingRewards,
 	address _stakingToken,
@@ -60,7 +60,7 @@ contract FarmBot is Owned, FarmbotERC20 {
 	address[] memory _rewardsTokens,
 	address[][2][] memory _paths,
         string memory _symbol
-    ) Owned(_owner) {
+    ) {
         stakingRewards = IMoolaStakingRewards(_stakingRewards);
 
 	for (uint i=0; i<_rewardsTokens.length; i++) {
@@ -84,17 +84,19 @@ contract FarmBot is Owned, FarmbotERC20 {
         symbol = _symbol;
 
         router = IUniswapV2Router02(_router);
+
+	_setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function updateBounty(address _revoBounty) external onlyOwner {
+    function updateBounty(address _revoBounty) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revoBounty = IRevoBounty(_revoBounty);
     }
 
-    function updatePaths(address[][2][] memory _paths) external onlyOwner {
+    function updatePaths(address[][2][] memory _paths) external onlyRole(DEFAULT_ADMIN_ROLE) {
 	paths = _paths;
     }
 
-    function updateSlippage(uint256 _slippageNumerator, uint256 _slippageDenominator) external onlyOwner {
+    function updateSlippage(uint256 _slippageNumerator, uint256 _slippageDenominator) external onlyRole(DEFAULT_ADMIN_ROLE) {
         slippageNumerator = _slippageNumerator;
         slippageDenominator = _slippageDenominator;
     }
@@ -200,7 +202,38 @@ contract FarmBot is Owned, FarmbotERC20 {
         }
     }
 
-    function claimRewards(uint deadline) public ensure(deadline) {
+    function addLiquidity(
+        uint256[] memory _tokenBalances,
+	uint256[] memory _bountyAmounts,
+	uint256[] memory _reserveAmounts,
+	uint deadline
+    ) private {
+	uint256 _totalAmountToken0 = 0;
+	uint256 _totalAmountToken1 = 0;
+	for (uint i=0; i < _bountyAmounts.length; i++) {
+	    uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i] - _reserveAmounts[i]) / 2;
+	    _totalAmountToken0 += swapForTokenInPool(paths[i][0], _halfTokens, rewardsTokens[i], deadline);
+	    _totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
+	}
+
+        // Approve the router to spend the bot's token0/token1
+        stakingToken0.approve(address(router), _totalAmountToken0);
+        stakingToken1.approve(address(router), _totalAmountToken1);
+        // Actually add liquidity
+        router.addLiquidity(
+            address(stakingToken0),
+            address(stakingToken1),
+            _totalAmountToken0,
+            _totalAmountToken1,
+            _totalAmountToken0 * slippageNumerator / slippageDenominator,
+            _totalAmountToken1 * slippageNumerator / slippageDenominator,
+            address(this),
+            deadline
+        );
+    }
+
+    function claimRewards(uint deadline) public ensure(deadline) onlyRole(COMPOUNDER_ROLE) {
+
         stakingRewards.getReward();
 
         // compute bounty for the caller
@@ -225,28 +258,8 @@ contract FarmBot is Owned, FarmbotERC20 {
 	    }
         }
 
-	uint256 _totalAmountToken0 = 0;
-	uint256 _totalAmountToken1 = 0;
-	for (uint i=0; i < _bountyAmounts.length; i++) {
-	    uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i] - _reserveAmounts[i]) / 2;
-	    _totalAmountToken0 += swapForTokenInPool(paths[i][0], _halfTokens, rewardsTokens[i], deadline);
-	    _totalAmountToken1 += swapForTokenInPool(paths[i][1], _halfTokens, rewardsTokens[i], deadline);
-	}
-
-        // Approve the router to spend the bot's token0/token1
-        stakingToken0.approve(address(router), _totalAmountToken0);
-        stakingToken1.approve(address(router), _totalAmountToken1);
-        // Actually add liquidity
-        router.addLiquidity(
-            address(stakingToken0),
-            address(stakingToken1),
-            _totalAmountToken0,
-            _totalAmountToken1,
-            _totalAmountToken0 * slippageNumerator / slippageDenominator,
-            _totalAmountToken1 * slippageNumerator / slippageDenominator,
-            address(this),
-            deadline
-        );
+	// Perform swaps and add liquidity
+	addLiquidity(_tokenBalances, _bountyAmounts, _reserveAmounts, deadline);
 
         // How much LP we have to re-invest
         uint256 lpBalance = stakingToken.balanceOf(address(this));
