@@ -152,8 +152,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
             tokenBalance > 0,
             "Cannot invest in farm because tokenBalance is 0"
         );
-        bool approved = stakingToken.approve(address(stakingRewards), tokenBalance);
-        require(approved, "Failed to approve staking token, cannot invest in farm");
+        stakingToken.approve(address(stakingRewards), tokenBalance);
         stakingRewards.stake(tokenBalance);
         return tokenBalance;
     }
