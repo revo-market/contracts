@@ -25,8 +25,7 @@ contract FarmBot is ERC20, AccessControl {
     event ClaimRewards(
         address indexed by,
         uint256 lpStaked,
-        uint256 interestEarnedNumerator,
-        uint256 interestEarnedDenominator,
+        uint256 newLPTotalBalance,
         uint256[] compounderFeeAmounts,
         uint256[] reserveFeeAmounts
     );
@@ -451,8 +450,7 @@ contract FarmBot is ERC20, AccessControl {
         emit ClaimRewards(
             msg.sender,
             lpBalance,
-            interestEarnedNumerator,
-            interestEarnedDenominator,
+            lpTotalBalance,
             _compounderFeeAmounts,
             _reserveFeeAmounts
         );
