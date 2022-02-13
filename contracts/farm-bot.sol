@@ -254,8 +254,8 @@ contract FarmBot is ERC20, AccessControl {
     {
         TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
 
-        compounderFee = revoBounty.compounderFee(_rewardsTokenBalances);
-        compounderBonus = revoBounty.compounderBonus(_rewardsTokenBalances);
+        compounderFee = revoFees.compounderFee(_rewardsTokenBalances);
+        compounderBonus = revoFees.compounderBonus(_rewardsTokenBalances);
     }
 
     // Figure out best-case scenario amount of token we can get and swap
