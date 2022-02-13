@@ -25,7 +25,9 @@
     "build": "tsc",
     "compile-contracts": "yarn hardhat compile",
     "deploy-contracts-alfajores": "hardhat deploy --network alfajores --step deploy-bot",
-    "test": "mocha 'test/**/*.ts'"
+    "test": "mocha 'test/**/*.ts'",
+    "lint": "solhint --fix contracts/*.sol",
+    "prettier": "prettier --write 'contracts/*.sol'"
   },
   "mocha": {
     "require": [
@@ -68,10 +70,11 @@
     "ethers": "^5.5.4",
     "hardhat": "^2.8.3",
     "hardhat-gas-reporter": "^1.0.4",
+    "husky": "^7.0.4",
     "mocha": "^9.2.0",
-    "prettier": "^2.3.2",
-    "prettier-plugin-solidity": "^1.0.0-beta.13",
-    "solhint": "^3.3.6",
+    "prettier": "^2.5.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.19",
+    "solhint": "^3.3.7",
     "solidity-coverage": "^0.7.16",
     "ts-mocha": "^8.0.0",
     "ts-node": "^10.1.0",
