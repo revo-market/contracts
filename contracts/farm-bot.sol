@@ -11,6 +11,16 @@ import "./IRevoBounty.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
 
 contract FarmBot is FarmbotERC20, AccessControl {
+    event BountyUpdated(address indexed by, address indexed to);
+    event SlippageUpdated(
+        address indexed by,
+        uint256 numerator,
+        uint256 denominator
+    );
+    event Deposit(address indexed by, uint256 lpAmount);
+    event Withdraw(address indexed by, uint256 lpAmount);
+    event ClaimRewards(address indexed by, uint256 lpStaked);
+
     bytes32 public constant COMPOUNDER_ROLE = keccak256("COMPOUNDER_ROLE");
 
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
@@ -82,6 +92,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         revoBounty = IRevoBounty(_revoBounty);
+        emit BountyUpdated(msg.sender, _revoBounty);
     }
 
     function updateSlippage(
@@ -90,6 +101,11 @@ contract FarmBot is FarmbotERC20, AccessControl {
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         slippageNumerator = _slippageNumerator;
         slippageDenominator = _slippageDenominator;
+        emit SlippageUpdated(
+            msg.sender,
+            _slippageNumerator,
+            _slippageDenominator
+        );
     }
 
     function getFpAmount(uint256 _lpAmount) public view returns (uint256) {
@@ -120,6 +136,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         _mint(msg.sender, _fpAmount);
         lpTotalBalance += _lpAmount;
         investInFarm();
+        emit Deposit(msg.sender, _lpAmount);
     }
 
     function withdrawAll() public {
@@ -144,6 +161,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         require(transferSuccess, "Transfer failed, aborting withdrawal");
         _burn(msg.sender, _fpAmount);
         lpTotalBalance -= _lpAmount;
+        emit Withdraw(msg.sender, _lpAmount);
     }
 
     function investInFarm() private {
@@ -371,5 +389,6 @@ contract FarmBot is FarmbotERC20, AccessControl {
             rewardsTokens[i].transfer(reserveAddress, _reserveAmounts[i]);
         }
         revoBounty.issueAdditionalBounty(msg.sender);
+        emit ClaimRewards(msg.sender, lpBalance);
     }
 }
