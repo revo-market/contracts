@@ -14,7 +14,7 @@ import "./openzeppelin-solidity/contracts/SafeERC20.sol";
 contract FarmBot is ERC20, AccessControl {
     using SafeERC20 for IERC20;
 
-    event BountyUpdated(address indexed by, address indexed to);
+    event FeesUpdated(address indexed by, address indexed to);
     event SlippageUpdated(
         address indexed by,
         uint256 numerator,
@@ -50,10 +50,13 @@ contract FarmBot is ERC20, AccessControl {
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
 
-    // Configurable fees contract. Determines the bounty for calling claimRewards on behalf of farm investors.
-    //      May issue external reward (e.g. a governance token), plus a small performance fee on interest earned by FP holders.
-    //      Performance fees should be about 0.1% and are guaranteed to be < 4%, the current standard for other protocols.
-    //      Withdrawal fees are guaranteed to be less than 0.25%, the price of a swap.
+    // Configurable fees contract. Determines:
+    //  - "compounder fee" for calling claimRewards on behalf of farm investors.
+    //  - "reserve fee" sent to reserve
+    //  - "compounder bonus" (paid by reserve) for calling claimRewards
+    //  - "withdrawal fee" for withdrawing (necessary for security, guaranteed <= 0.25%)
+    //  Note that compounder fees + reserve fees are "performance fees", meaning they are charged only on earnings.
+    //  Performance fees are guaranteed to be at most 4%, the current standard, and should be much less.
     IRevoFees public revoFees;
     uint256 public maxPerformanceFeeNumerator = 40;
     uint256 public maxPerformanceFeeDenominator = 1000;
@@ -71,7 +74,7 @@ contract FarmBot is ERC20, AccessControl {
         address _reserveAddress,
         address _stakingRewards,
         address _stakingToken,
-        address _revoBounty,
+        address _revoFees,
         address _router,
         address[] memory _rewardsTokens,
         string memory _symbol
@@ -82,7 +85,7 @@ contract FarmBot is ERC20, AccessControl {
             rewardsTokens.push(IERC20(_rewardsTokens[i]));
         }
 
-        revoFees = IRevoFees(_revoBounty);
+        revoFees = IRevoFees(_revoFees);
 
         stakingToken = IUniswapV2Pair(_stakingToken);
         stakingToken0 = IERC20(stakingToken.token0());
@@ -95,12 +98,12 @@ contract FarmBot is ERC20, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function updateBounty(address _revoBounty)
+    function updateFees(address _revoFees)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        revoFees = IRevoFees(_revoBounty);
-        emit BountyUpdated(msg.sender, _revoBounty);
+        revoFees = IRevoFees(_revoFees);
+        emit FeesUpdated(msg.sender, _revoFees);
     }
 
     function updateSlippage(
@@ -242,7 +245,7 @@ contract FarmBot is ERC20, AccessControl {
 	return _rewardsTokenBalances;
     }
 
-    // convenience methods for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
+    // convenience methods for anyone considering calling claimRewards (who may want to compare bonus to gas cost)
     function previewCompounderBonus() external returns (TokenAmount[] memory) {
 	TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
 	return revoFees.compounderBonus(_rewardsTokenBalances);
@@ -385,12 +388,12 @@ contract FarmBot is ERC20, AccessControl {
             TokenAmount[] memory _compounderFees = revoFees.compounderFee(
                 _interestAccrued
             );
-            TokenAmount[] memory _reserveFees = revoFees.reserveFees(
+            TokenAmount[] memory _reserveFees = revoFees.reserveFee(
                 _interestAccrued
             );
             require(
                 _compounderFees.length == _reserveFees.length,
-                "Got conflicting results from RevoBounty"
+                "Got conflicting results from RevoFees"
             );
             for (uint256 i = 0; i < _compounderFees.length; i++) {
                 _compounderFeeAmounts[i] = _compounderFees[i].amount;

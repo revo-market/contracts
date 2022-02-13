@@ -18,7 +18,7 @@ interface IRevoFees {
 	view
 	returns (TokenAmount[] memory);
 
-    function reserveFees(TokenAmount[] calldata interestAccrued)
+    function reserveFee(TokenAmount[] calldata interestAccrued)
         external
         view
         returns (TokenAmount[] memory);
