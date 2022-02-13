@@ -9,8 +9,11 @@ import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./FarmbotERC20.sol";
 import "./IRevoBounty.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
+import "./openzeppelin-solidity/contracts/SafeERC20.sol";
 
 contract FarmBot is FarmbotERC20, AccessControl {
+    using SafeERC20 for IERC20;
+
     bytes32 public constant COMPOUNDER_ROLE = keccak256("COMPOUNDER_ROLE");
 
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
@@ -367,8 +370,8 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
         // Send bounty to caller
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            rewardsTokens[i].transfer(msg.sender, _bountyAmounts[i]);
-            rewardsTokens[i].transfer(reserveAddress, _reserveAmounts[i]);
+            rewardsTokens[i].safeTransfer(msg.sender, _bountyAmounts[i]);
+            rewardsTokens[i].safeTransfer(reserveAddress, _reserveAmounts[i]);
         }
         revoBounty.issueAdditionalBounty(msg.sender);
     }
