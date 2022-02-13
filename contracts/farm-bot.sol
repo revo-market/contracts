@@ -6,14 +6,31 @@ import "hardhat/console.sol";
 import "./IMoolaStakingRewards.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
-import "./FarmbotERC20.sol";
 import "./IRevoBounty.sol";
+import "./openzeppelin-solidity/contracts/ERC20.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
+import "./openzeppelin-solidity/contracts/SafeERC20.sol";
 
-contract FarmBot is FarmbotERC20, AccessControl {
+contract FarmBot is ERC20, AccessControl {
+    using SafeERC20 for IERC20;
+
+    event BountyUpdated(address indexed by, address indexed to);
+    event SlippageUpdated(
+        address indexed by,
+        uint256 numerator,
+        uint256 denominator
+    );
+    event Deposit(address indexed by, uint256 lpAmount);
+    event Withdraw(address indexed by, uint256 lpAmount);
+    event ClaimRewards(address indexed by, uint256 lpStaked);
+
     bytes32 public constant COMPOUNDER_ROLE = keccak256("COMPOUNDER_ROLE");
 
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
+
+    // fractional increase of LP balance last time claimRewards was called. Used to calculate withdrawal fee.
+    uint256 public interestEarnedNumerator;
+    uint256 public interestEarnedDenominator = 10000;
 
     IMoolaStakingRewards public stakingRewards;
 
@@ -34,11 +51,14 @@ contract FarmBot is FarmbotERC20, AccessControl {
     uint256 public slippageDenominator = 100;
 
     // Configurable bounty contract. Determines the bounty for calling claimRewards on behalf of farm investors.
-    //      May issue external reward (e.g. a governance token), plus a small fee on interest earned by FP holders.
-    //      Fees should be 0.1% and are guaranteed to be < 4%, the current standard for other protocols.
+    //      May issue external reward (e.g. a governance token), plus a small performance fee on interest earned by FP holders.
+    //      Performance fees should be about 0.1% and are guaranteed to be < 4%, the current standard for other protocols.
+    //      Withdrawal fees are guaranteed to be less than 0.25%, the price of a swap.
     IRevoBounty public revoBounty;
-    uint256 public maxFeeNumerator = 40;
-    uint256 public maxFeeDenominator = 1000;
+    uint256 public maxPerformanceFeeNumerator = 40;
+    uint256 public maxPerformanceFeeDenominator = 1000;
+    uint256 public maxWithdrawalFeeNumerator = 25;
+    uint256 public maxWithdrawalFeeDenominator = 10000;
 
     address public reserveAddress;
 
@@ -55,7 +75,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         address _router,
         address[] memory _rewardsTokens,
         string memory _symbol
-    ) {
+    ) ERC20("FarmBot FP Token", _symbol) {
         stakingRewards = IMoolaStakingRewards(_stakingRewards);
 
         for (uint256 i = 0; i < _rewardsTokens.length; i++) {
@@ -70,8 +90,6 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
         reserveAddress = _reserveAddress;
 
-        symbol = _symbol;
-
         router = IUniswapV2Router02(_router);
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -82,6 +100,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         revoBounty = IRevoBounty(_revoBounty);
+        emit BountyUpdated(msg.sender, _revoBounty);
     }
 
     function updateSlippage(
@@ -90,21 +109,26 @@ contract FarmBot is FarmbotERC20, AccessControl {
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         slippageNumerator = _slippageNumerator;
         slippageDenominator = _slippageDenominator;
+        emit SlippageUpdated(
+            msg.sender,
+            _slippageNumerator,
+            _slippageDenominator
+        );
     }
 
     function getFpAmount(uint256 _lpAmount) public view returns (uint256) {
         if (lpTotalBalance == 0) {
             return _lpAmount;
         } else {
-            return (_lpAmount * totalSupply) / lpTotalBalance;
+            return (_lpAmount * totalSupply()) / lpTotalBalance;
         }
     }
 
     function getLpAmount(uint256 _fpAmount) public view returns (uint256) {
-        if (totalSupply == 0) {
+        if (totalSupply() == 0) {
             return 0;
         } else {
-            return (_fpAmount * lpTotalBalance) / totalSupply;
+            return (_fpAmount * lpTotalBalance) / totalSupply();
         }
     }
 
@@ -120,18 +144,19 @@ contract FarmBot is FarmbotERC20, AccessControl {
         _mint(msg.sender, _fpAmount);
         lpTotalBalance += _lpAmount;
         investInFarm();
+        emit Deposit(msg.sender, _lpAmount);
     }
 
     function withdrawAll() public {
-        require(balanceOf[msg.sender] > 0, "Cannot withdraw zero balance");
-        uint256 _lpAmount = getLpAmount(balanceOf[msg.sender]);
+        require(balanceOf(msg.sender) > 0, "Cannot withdraw zero balance");
+        uint256 _lpAmount = getLpAmount(balanceOf(msg.sender));
         withdraw(_lpAmount);
     }
 
     function withdraw(uint256 _lpAmount) public {
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
         require(
-            balanceOf[msg.sender] >= _fpAmount,
+            balanceOf(msg.sender) >= _fpAmount,
             "Cannot withdraw more than the total balance of the owner"
         );
 
@@ -140,10 +165,30 @@ contract FarmBot is FarmbotERC20, AccessControl {
             stakingRewards.withdraw(_lpAmount - tokenBalance);
         }
 
-        bool transferSuccess = stakingToken.transfer(msg.sender, _lpAmount);
+        // fee
+        (uint256 feeNumerator, uint256 feeDenominator) = revoBounty
+            .calculateWithdrawalFee(
+                interestEarnedNumerator,
+                interestEarnedDenominator
+            );
+        uint256 _withdrawalFee = (feeNumerator * _lpAmount) / feeDenominator;
+        uint256 _maxWithdrawalFee = (maxPerformanceFeeNumerator * _lpAmount) /
+            maxPerformanceFeeDenominator;
+        if (_withdrawalFee > _maxWithdrawalFee) {
+            // guarantee the max fee
+            _withdrawalFee = _maxWithdrawalFee;
+        }
+
+        bool feeSuccess = stakingToken.transfer(reserveAddress, _withdrawalFee);
+        require(feeSuccess, "Fee failed, aborting withdrawal");
+        bool transferSuccess = stakingToken.transfer(
+            msg.sender,
+            _lpAmount - _withdrawalFee
+        );
         require(transferSuccess, "Transfer failed, aborting withdrawal");
         _burn(msg.sender, _fpAmount);
         lpTotalBalance -= _lpAmount;
+        emit Withdraw(msg.sender, _lpAmount);
     }
 
     function investInFarm() private returns (uint256) {
@@ -341,8 +386,8 @@ contract FarmBot is FarmbotERC20, AccessControl {
                 _reserveAmounts[i] = _reserveFees[i].amount;
                 require(
                     _bountyAmounts[i] + _reserveAmounts[i] <=
-                        (maxFeeNumerator * _tokenBalances[i]) /
-                            maxFeeDenominator,
+                        (maxPerformanceFeeNumerator * _tokenBalances[i]) /
+                            maxPerformanceFeeDenominator,
                     "Bounty amount too high"
                 );
             }
@@ -359,13 +404,20 @@ contract FarmBot is FarmbotERC20, AccessControl {
         );
 
         // reinvest LPs and adjust FP weight
-        lpTotalBalance += investInFarm();
+        uint256 lpBalance = investInFarm();
+        lpTotalBalance += lpBalance;
+
+        // update interest rate
+        interestEarnedNumerator =
+            (lpBalance * interestEarnedDenominator) /
+            lpTotalBalance;
 
         // Send bounty to caller
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            rewardsTokens[i].transfer(msg.sender, _bountyAmounts[i]);
-            rewardsTokens[i].transfer(reserveAddress, _reserveAmounts[i]);
+            rewardsTokens[i].safeTransfer(msg.sender, _bountyAmounts[i]);
+            rewardsTokens[i].safeTransfer(reserveAddress, _reserveAmounts[i]);
         }
         revoBounty.issueAdditionalBounty(msg.sender);
+        emit ClaimRewards(msg.sender, lpBalance);
     }
 }

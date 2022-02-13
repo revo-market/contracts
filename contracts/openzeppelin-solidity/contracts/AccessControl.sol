@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "./IAccessControl.sol";
-import "../utils/Context.sol";
+import "./Context.sol";
 import "../utils/Strings.sol";
 import "../utils/introspection/ERC165.sol";
 

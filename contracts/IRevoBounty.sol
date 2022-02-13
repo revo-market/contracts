@@ -18,5 +18,10 @@ interface IRevoBounty {
         view
         returns (TokenAmount[] memory);
 
+    function calculateWithdrawalFee(
+        uint256 interestEarnedNumerator,
+        uint256 interestEarnedDenominator
+    ) external view returns (uint256 feeNumerator, uint256 feeDenominator);
+
     function issueAdditionalBounty(address recipient) external;
 }
