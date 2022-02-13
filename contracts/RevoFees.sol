@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "./ubeswap-farming/contracts/Owned.sol";
@@ -43,7 +44,7 @@ contract RevoFees is Owned, IRevoFees {
         TokenAmount[] memory _interestAccrued,
         uint256 _feeNumerator,
         uint256 _feeDenominator
-    ) private view returns (TokenAmount[] memory output) {
+    ) private pure returns (TokenAmount[] memory output) {
         output = new TokenAmount[](_interestAccrued.length);
         for (uint256 idx = 0; idx < _interestAccrued.length; idx++) {
             uint256 _fee = (_interestAccrued[idx].amount * _feeNumerator) /
@@ -54,7 +55,7 @@ contract RevoFees is Owned, IRevoFees {
 
     function compounderBonus(TokenAmount[] memory _interestAccrued)
         external
-        view
+        pure
         override
         returns (TokenAmount[] memory output)
     {
@@ -87,7 +88,7 @@ contract RevoFees is Owned, IRevoFees {
         );
     }
 
-    function issueCompounderBonus(address recipient) external override {
+    function issueCompounderBonus(address recipient) external pure override {
         return; // intentionally does nothing
     }
 
@@ -96,7 +97,7 @@ contract RevoFees is Owned, IRevoFees {
         uint256 interestEarnedDenominator
     )
         external
-        view
+        pure
         override
         returns (uint256 feeNumerator, uint256 feeDenominator)
     {
