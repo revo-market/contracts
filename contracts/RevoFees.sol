@@ -1,34 +1,34 @@
 pragma solidity ^0.8.0;
 
 import "./ubeswap-farming/contracts/Owned.sol";
-import "./IRevoBounty.sol";
+import "./IRevoFees.sol";
 
-contract FeeOnlyBounty is Owned, IRevoBounty {
-    uint256 public bountyFeeNumerator;
-    uint256 public bountyFeeDenominator;
+contract RevoFees is Owned, IRevoFees {
+    uint256 public compounderFeeNumerator;
+    uint256 public compounderFeeDenominator;
 
     uint256 public reserveFeeNumerator;
     uint256 public reserveFeeDenominator;
 
     constructor(
         address _owner,
-        uint256 _bountyFeeNumerator,
-        uint256 _bountyFeeDenominator,
+        uint256 _compounderFeeNumerator,
+        uint256 _compounderFeeDenominator,
         uint256 _reserveFeeNumerator,
         uint256 _reserveFeeDenominator
     ) Owned(_owner) {
-        bountyFeeNumerator = _bountyFeeNumerator;
-        bountyFeeDenominator = _bountyFeeDenominator;
+        compounderFeeNumerator = _compounderFeeNumerator;
+        compounderFeeDenominator = _compounderFeeDenominator;
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
     }
 
-    function updateBountyFee(
-        uint256 _bountyFeeNumerator,
-        uint256 _bountyFeeDenominator
+    function updateCompounderFee(
+        uint256 _compounderFeeNumerator,
+        uint256 _compounderFeeDenominator
     ) external onlyOwner {
-        bountyFeeNumerator = _bountyFeeNumerator;
-        bountyFeeDenominator = _bountyFeeDenominator;
+        compounderFeeNumerator = _compounderFeeNumerator;
+        compounderFeeDenominator = _compounderFeeDenominator;
     }
 
     function updateReserveFee(
@@ -52,16 +52,16 @@ contract FeeOnlyBounty is Owned, IRevoBounty {
         }
     }
 
-    function calculateAdditionalBountyFee(TokenAmount[] memory _interestAccrued)
-	external
-	view
-	override
-	returns (TokenAmount[] memory output)
+    function compounderBonus(TokenAmount[] memory _interestAccrued)
+        external
+        view
+        override
+        returns (TokenAmount[] memory output)
     {
-	return new TokenAmount[](0); // intentionally returns empty list
+        return new TokenAmount[](0); // intentionally returns empty list
     }
 
-    function calculateBountyFee(TokenAmount[] memory _interestAccrued)
+    function compounderFee(TokenAmount[] memory _interestAccrued)
         external
         view
         override
@@ -69,12 +69,12 @@ contract FeeOnlyBounty is Owned, IRevoBounty {
     {
         output = calculateFee(
             _interestAccrued,
-            bountyFeeNumerator,
-            bountyFeeDenominator
+            compounderFeeNumerator,
+            compounderFeeDenominator
         );
     }
 
-    function calculateReserveFee(TokenAmount[] memory _interestAccrued)
+    function reserveFee(TokenAmount[] memory _interestAccrued)
         external
         view
         override
@@ -87,11 +87,11 @@ contract FeeOnlyBounty is Owned, IRevoBounty {
         );
     }
 
-    function issueAdditionalBounty(address recipient) external override {
+    function issueCompounderBonus(address recipient) external override {
         return; // intentionally does nothing
     }
 
-    function calculateWithdrawalFee(
+    function withdrawalFee(
         uint256 interestEarnedNumerator,
         uint256 interestEarnedDenominator
     )

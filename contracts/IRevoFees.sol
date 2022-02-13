@@ -7,26 +7,26 @@ struct TokenAmount {
     uint256 amount;
 }
 
-interface IRevoBounty {
-    function calculateBountyFee(TokenAmount[] calldata interestAccrued)
+interface IRevoFees {
+    function compounderFee(TokenAmount[] calldata interestAccrued)
         external
         view
         returns (TokenAmount[] memory);
 
-    function calculateAdditionalBountyFee(TokenAmount[] calldata interestAccrued)
-	external
-	view
-	returns (TokenAmount[] memory);
-
-    function calculateReserveFee(TokenAmount[] calldata interestAccrued)
+    function compounderBonus(TokenAmount[] calldata interestAccrued)
         external
         view
         returns (TokenAmount[] memory);
 
-    function calculateWithdrawalFee(
+    function reserveFee(TokenAmount[] calldata interestAccrued)
+        external
+        view
+        returns (TokenAmount[] memory);
+
+    function withdrawalFee(
         uint256 interestEarnedNumerator,
         uint256 interestEarnedDenominator
     ) external view returns (uint256 feeNumerator, uint256 feeDenominator);
 
-    function issueAdditionalBounty(address recipient) external;
+    function issueCompounderBonus(address recipient) external;
 }
