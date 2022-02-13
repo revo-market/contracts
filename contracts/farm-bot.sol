@@ -21,8 +21,14 @@ contract FarmBot is ERC20, AccessControl {
         uint256 denominator
     );
     event Deposit(address indexed by, uint256 lpAmount);
-    event Withdraw(address indexed by, uint256 lpAmount);
-    event ClaimRewards(address indexed by, uint256 lpStaked);
+    event Withdraw(address indexed by, uint256 lpAmount, uint256 fee);
+    event ClaimRewards(
+        address indexed by,
+        uint256 lpStaked,
+        uint256 newLPTotalBalance,
+        uint256[] compounderFeeAmounts,
+        uint256[] reserveFeeAmounts
+    );
 
     bytes32 public constant COMPOUNDER_ROLE = keccak256("COMPOUNDER_ROLE");
 
@@ -190,7 +196,7 @@ contract FarmBot is ERC20, AccessControl {
         require(transferSuccess, "Transfer failed, aborting withdrawal");
         _burn(msg.sender, _fpAmount);
         lpTotalBalance -= _lpAmount;
-        emit Withdraw(msg.sender, _lpAmount);
+        emit Withdraw(msg.sender, _lpAmount, _withdrawalFee);
     }
 
     function investInFarm() private returns (uint256) {
@@ -441,6 +447,12 @@ contract FarmBot is ERC20, AccessControl {
             );
         }
         revoFees.issueCompounderBonus(msg.sender);
-        emit ClaimRewards(msg.sender, lpBalance);
+        emit ClaimRewards(
+            msg.sender,
+            lpBalance,
+            lpTotalBalance,
+            _compounderFeeAmounts,
+            _reserveFeeAmounts
+        );
     }
 }
