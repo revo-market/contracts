@@ -266,12 +266,31 @@ contract FarmBot is FarmbotERC20, AccessControl {
         );
     }
 
-    // The _paths parameter represents a list of paths to use when swapping each rewards token to token0/token1 of the LP.
-    // Each top-level entry represents a pair of paths for each rewardsToken.
-    //
-    // The _minAmountsOut parameter represents a list of minimum amounts for token0/token1 we expect to receive when swapping
-    // each rewardsToken. If we do not receieve at least this much of token0/token1 for some swap, the transaction will revert.
-    // If a path corresponding to some swap has length < 2, the minimum amount specified for that swap will be ignored.
+    /**
+     * The _paths parameter represents a list of paths to use when swapping each rewards token to token0/token1 of the LP.
+     *  Each top-level entry represents a pair of paths for each rewardsToken.
+     *
+     * Example:
+     *  // string token names used in place of addresses for readability
+     *  rewardsTokens = ['cUSD', 'Celo', 'UBE']
+     *  stakingTokens = ['cEUR', 'MOO']
+     *  paths = [
+     *    [ // paths from cUSD to staking tokens
+     *      ['cUSD', 'cEUR'], // order matters here (need first staking token first)
+     *      ['cUSD', 'mcUSD', 'MOO']
+     *    ],
+     *    [ // paths from Celo to staking tokens
+     *      ...
+     *    ],
+     *    [ // paths from UBE to staking tokens
+     *      ...
+     *    ]
+     *  ]
+     *
+     * The _minAmountsOut parameter represents a list of minimum amounts for token0/token1 we expect to receive when swapping
+     *  each rewardsToken. If we do not receive at least this much of token0/token1 for some swap, the transaction will revert.
+     * If a path corresponding to some swap has length < 2, the minimum amount specified for that swap will be ignored.
+     */
     function claimRewards(
         address[][2][] memory _paths,
         uint256[][2] memory _minAmountsOut,
