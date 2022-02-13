@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
 import "./ubeswap-farming/contracts/Owned.sol";
-import "./IRevoBounty.sol";
+import "./IRevoFees.sol";
 
 contract RevoFees is Owned, IRevoFees {
     uint256 public compounderFeeNumerator;

@@ -6,7 +6,7 @@ import "hardhat/console.sol";
 import "./IMoolaStakingRewards.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
-import "./IRevoBounty.sol";
+import "./IRevoFees.sol";
 import "./openzeppelin-solidity/contracts/ERC20.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
 import "./openzeppelin-solidity/contracts/SafeERC20.sol";

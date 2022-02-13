@@ -1,6 +1,6 @@
 pragma solidity ^0.8.0;
 
-import "../IRevoBounty.sol";
+import "../IRevoFees.sol";
 
 contract MockRevoFees is IRevoFees {
     TokenAmount[] bonuses;
