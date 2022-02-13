@@ -393,8 +393,8 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
         // update interest rate
         interestEarnedNumerator =
-            (lpBalance / lpTotalBalance) *
-            interestEarnedDenominator;
+            (lpBalance * interestEarnedDenominator) /
+            lpTotalBalance;
 
         // Send bounty to caller
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
