@@ -239,18 +239,23 @@ contract FarmBot is ERC20, AccessControl {
                 _interestEarned[i] + _leftoverBalances[i]
             );
         }
-	return _rewardsTokenBalances;
+        return _rewardsTokenBalances;
     }
 
-    // convenience methods for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
-    function previewAdditionalBounty() external returns (TokenAmount[] memory) {
-	TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
-	return revoBounty.calculateAdditionalBountyFee(_rewardsTokenBalances);
-    }
+    // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
+    function previewBounty()
+        external
+        returns (
+            TokenAmount[] memory bountyAmounts,
+            TokenAmount[] memory additionalBountyAmounts
+        )
+    {
+        TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
 
-    function previewBounty() external returns (TokenAmount[] memory) {
-	TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
-	return revoBounty.calculateBountyFee(_rewardsTokenBalances);
+        bountyAmounts = revoBounty.calculateBountyFee(_rewardsTokenBalances);
+        additionalBountyAmounts = revoBounty.calculateAdditionalBountyFee(
+            _rewardsTokenBalances
+        );
     }
 
     // Figure out best-case scenario amount of token we can get and swap

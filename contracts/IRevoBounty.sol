@@ -13,10 +13,9 @@ interface IRevoBounty {
         view
         returns (TokenAmount[] memory);
 
-    function calculateAdditionalBountyFee(TokenAmount[] calldata interestAccrued)
-	external
-	view
-	returns (TokenAmount[] memory);
+    function calculateAdditionalBountyFee(
+        TokenAmount[] calldata interestAccrued
+    ) external view returns (TokenAmount[] memory);
 
     function calculateReserveFee(TokenAmount[] calldata interestAccrued)
         external
