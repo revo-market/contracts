@@ -81,4 +81,10 @@ contract FeeOnlyBounty is Owned, IRevoBounty {
     function issueAdditionalBounty(address recipient) external override {
         return; // intentionally does nothing
     }
+
+    function calculateWithdrawalFee(uint256 interestEarnedNumerator, uint256 interestEarnedDenominator) external view override returns (uint256 feeNumerator, uint256 feeDenominator) {
+        // 0.25% (ignores interest earned for simplicity)
+        feeNumerator = 25;
+        feeDenominator = 10000;
+    }
 }
