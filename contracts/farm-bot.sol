@@ -148,12 +148,14 @@ contract FarmBot is FarmbotERC20, AccessControl {
         }
 
         // fee
-        (uint256 feeNumerator, uint256 feeDenominator) = revoBounty.calculateWithdrawalFee(
-            interestEarnedNumerator,
-            interestEarnedDenominator
-        );
-        uint256 _withdrawalFee = feeNumerator * _lpAmount / feeDenominator;
-        uint256 _maxWithdrawalFee = maxPerformanceFeeNumerator * _lpAmount / maxPerformanceFeeDenominator;
+        (uint256 feeNumerator, uint256 feeDenominator) = revoBounty
+            .calculateWithdrawalFee(
+                interestEarnedNumerator,
+                interestEarnedDenominator
+            );
+        uint256 _withdrawalFee = (feeNumerator * _lpAmount) / feeDenominator;
+        uint256 _maxWithdrawalFee = (maxPerformanceFeeNumerator * _lpAmount) /
+            maxPerformanceFeeDenominator;
         if (_withdrawalFee > _maxWithdrawalFee) {
             // guarantee the max fee
             _withdrawalFee = _maxWithdrawalFee;
@@ -161,7 +163,10 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
         bool feeSuccess = stakingToken.transfer(reserveAddress, _withdrawalFee);
         require(feeSuccess, "Fee failed, aborting withdrawal");
-        bool transferSuccess = stakingToken.transfer(msg.sender, _lpAmount - _withdrawalFee);
+        bool transferSuccess = stakingToken.transfer(
+            msg.sender,
+            _lpAmount - _withdrawalFee
+        );
         require(transferSuccess, "Transfer failed, aborting withdrawal");
         _burn(msg.sender, _fpAmount);
         lpTotalBalance -= _lpAmount;
@@ -362,7 +367,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
                 require(
                     _bountyAmounts[i] + _reserveAmounts[i] <=
                         (maxPerformanceFeeNumerator * _tokenBalances[i]) /
-                        maxPerformanceFeeDenominator,
+                            maxPerformanceFeeDenominator,
                     "Bounty amount too high"
                 );
             }
@@ -387,7 +392,9 @@ contract FarmBot is FarmbotERC20, AccessControl {
         lpTotalBalance += lpBalance;
 
         // update interest rate
-        interestEarnedNumerator = (lpBalance / lpTotalBalance) * interestEarnedDenominator;
+        interestEarnedNumerator =
+            (lpBalance / lpTotalBalance) *
+            interestEarnedDenominator;
 
         // Send bounty to caller
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
