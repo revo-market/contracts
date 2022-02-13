@@ -202,10 +202,11 @@ contract FarmBot is ERC20, AccessControl {
         return tokenBalance;
     }
 
-    // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
+    // Private method used to calculate what tokens would be available for reinvestment if claimRewards were called
+    // right now.
     // Annoyingly, the MoolaStakingRewards.earnedExternal method is not declared as a view, so we cannot declare this
     // method as a view itself.
-    function previewBounty() external returns (TokenAmount[] memory) {
+    function calculateRewards() private returns (TokenAmount[] memory) {
         uint256[] memory _leftoverBalances = new uint256[](
             rewardsTokens.length
         );
@@ -238,8 +239,18 @@ contract FarmBot is ERC20, AccessControl {
                 _interestEarned[i] + _leftoverBalances[i]
             );
         }
+	return _rewardsTokenBalances;
+    }
 
-        return revoBounty.calculateBountyFee(_rewardsTokenBalances);
+    // convenience methods for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
+    function previewAdditionalBounty() external returns (TokenAmount[] memory) {
+	TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
+	return revoBounty.calculateAdditionalBountyFee(_rewardsTokenBalances);
+    }
+
+    function previewBounty() external returns (TokenAmount[] memory) {
+	TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
+	return revoBounty.calculateBountyFee(_rewardsTokenBalances);
     }
 
     // Figure out best-case scenario amount of token we can get and swap

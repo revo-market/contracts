@@ -52,6 +52,15 @@ contract FeeOnlyBounty is Owned, IRevoBounty {
         }
     }
 
+    function calculateAdditionalBountyFee(TokenAmount[] memory _interestAccrued)
+	external
+	view
+	override
+	returns (TokenAmount[] memory output)
+    {
+	return new TokenAmount[](0); // intentionally returns empty list
+    }
+
     function calculateBountyFee(TokenAmount[] memory _interestAccrued)
         external
         view
