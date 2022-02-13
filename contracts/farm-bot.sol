@@ -6,7 +6,7 @@ import "hardhat/console.sol";
 import "./IMoolaStakingRewards.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
-import "./IRevoBounty.sol";
+import "./IRevoFees.sol";
 import "./openzeppelin-solidity/contracts/ERC20.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
 import "./openzeppelin-solidity/contracts/SafeERC20.sol";
@@ -14,7 +14,7 @@ import "./openzeppelin-solidity/contracts/SafeERC20.sol";
 contract FarmBot is ERC20, AccessControl {
     using SafeERC20 for IERC20;
 
-    event BountyUpdated(address indexed by, address indexed to);
+    event FeesUpdated(address indexed by, address indexed to);
     event SlippageUpdated(
         address indexed by,
         uint256 numerator,
@@ -50,11 +50,14 @@ contract FarmBot is ERC20, AccessControl {
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
 
-    // Configurable bounty contract. Determines the bounty for calling claimRewards on behalf of farm investors.
-    //      May issue external reward (e.g. a governance token), plus a small performance fee on interest earned by FP holders.
-    //      Performance fees should be about 0.1% and are guaranteed to be < 4%, the current standard for other protocols.
-    //      Withdrawal fees are guaranteed to be less than 0.25%, the price of a swap.
-    IRevoBounty public revoBounty;
+    // Configurable fees contract. Determines:
+    //  - "compounder fee" for calling claimRewards on behalf of farm investors.
+    //  - "reserve fee" sent to reserve
+    //  - "compounder bonus" (paid by reserve) for calling claimRewards
+    //  - "withdrawal fee" for withdrawing (necessary for security, guaranteed <= 0.25%)
+    //  Note that compounder fees + reserve fees are "performance fees", meaning they are charged only on earnings.
+    //  Performance fees are guaranteed to be at most 4%, the current standard, and should be much less.
+    IRevoFees public revoFees;
     uint256 public maxPerformanceFeeNumerator = 40;
     uint256 public maxPerformanceFeeDenominator = 1000;
     uint256 public maxWithdrawalFeeNumerator = 25;
@@ -71,7 +74,7 @@ contract FarmBot is ERC20, AccessControl {
         address _reserveAddress,
         address _stakingRewards,
         address _stakingToken,
-        address _revoBounty,
+        address _revoFees,
         address _router,
         address[] memory _rewardsTokens,
         string memory _symbol
@@ -82,7 +85,7 @@ contract FarmBot is ERC20, AccessControl {
             rewardsTokens.push(IERC20(_rewardsTokens[i]));
         }
 
-        revoBounty = IRevoBounty(_revoBounty);
+        revoFees = IRevoFees(_revoFees);
 
         stakingToken = IUniswapV2Pair(_stakingToken);
         stakingToken0 = IERC20(stakingToken.token0());
@@ -95,12 +98,12 @@ contract FarmBot is ERC20, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function updateBounty(address _revoBounty)
+    function updateFees(address _revoFees)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        revoBounty = IRevoBounty(_revoBounty);
-        emit BountyUpdated(msg.sender, _revoBounty);
+        revoFees = IRevoFees(_revoFees);
+        emit FeesUpdated(msg.sender, _revoFees);
     }
 
     function updateSlippage(
@@ -166,11 +169,10 @@ contract FarmBot is ERC20, AccessControl {
         }
 
         // fee
-        (uint256 feeNumerator, uint256 feeDenominator) = revoBounty
-            .calculateWithdrawalFee(
-                interestEarnedNumerator,
-                interestEarnedDenominator
-            );
+        (uint256 feeNumerator, uint256 feeDenominator) = revoFees.withdrawalFee(
+            interestEarnedNumerator,
+            interestEarnedDenominator
+        );
         uint256 _withdrawalFee = (feeNumerator * _lpAmount) / feeDenominator;
         uint256 _maxWithdrawalFee = (maxPerformanceFeeNumerator * _lpAmount) /
             maxPerformanceFeeDenominator;
@@ -243,17 +245,17 @@ contract FarmBot is ERC20, AccessControl {
     }
 
     // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
-    function previewBounty()
+    function previewCompounderRewards()
         external
         returns (
-            TokenAmount[] memory bountyAmounts,
-            TokenAmount[] memory additionalBountyAmounts
+            TokenAmount[] memory compounderFee,
+            TokenAmount[] memory compounderBonus
         )
     {
         TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
 
-        bountyAmounts = revoBounty.calculateBountyFee(_rewardsTokenBalances);
-        additionalBountyAmounts = revoBounty.calculateAdditionalBountyFee(
+        compounderFee = revoBounty.compounderFee(_rewardsTokenBalances);
+	compounderBonus = revoBounty.compounderBonus(
             _rewardsTokenBalances
         );
     }
@@ -284,18 +286,18 @@ contract FarmBot is ERC20, AccessControl {
 
     function addLiquidity(
         uint256[] memory _tokenBalances,
-        uint256[] memory _bountyAmounts,
-        uint256[] memory _reserveAmounts,
+        uint256[] memory _compounderFee,
+        uint256[] memory _reserveFee,
         address[][2][] memory _paths,
         uint256[][2] memory _minAmountsOut,
         uint256 _deadline
     ) private {
         uint256 _totalAmountToken0 = 0;
         uint256 _totalAmountToken1 = 0;
-        for (uint256 i = 0; i < _bountyAmounts.length; i++) {
+        for (uint256 i = 0; i < _compounderFee.length; i++) {
             uint256 _halfTokens = (_tokenBalances[i] -
-                _bountyAmounts[i] -
-                _reserveAmounts[i]) / 2;
+                _compounderFee[i] -
+                _reserveFee[i]) / 2;
             _totalAmountToken0 += swapForTokenInPool(
                 _paths[i][0],
                 _halfTokens,
@@ -369,10 +371,14 @@ contract FarmBot is ERC20, AccessControl {
 
         stakingRewards.getReward();
 
-        // compute bounty for the caller
+        // compute fees
         uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
-        uint256[] memory _bountyAmounts = new uint256[](rewardsTokens.length);
-        uint256[] memory _reserveAmounts = new uint256[](rewardsTokens.length);
+        uint256[] memory _compounderFeeAmounts = new uint256[](
+            rewardsTokens.length
+        );
+        uint256[] memory _reserveFeeAmounts = new uint256[](
+            rewardsTokens.length
+        );
 
         {
             // block is to prevent 'stack too deep' compilation error.
@@ -387,24 +393,24 @@ contract FarmBot is ERC20, AccessControl {
                 );
             }
 
-            TokenAmount[] memory _bountyFees = revoBounty.calculateBountyFee(
+            TokenAmount[] memory _compounderFees = revoFees.compounderFee(
                 _interestAccrued
             );
-            TokenAmount[] memory _reserveFees = revoBounty.calculateReserveFee(
+            TokenAmount[] memory _reserveFees = revoFees.reserveFee(
                 _interestAccrued
             );
             require(
-                _bountyFees.length == _reserveFees.length,
-                "Got conflicting results from RevoBounty"
+                _compounderFees.length == _reserveFees.length,
+                "Got conflicting results from RevoFees"
             );
-            for (uint256 i = 0; i < _bountyFees.length; i++) {
-                _bountyAmounts[i] = _bountyFees[i].amount;
-                _reserveAmounts[i] = _reserveFees[i].amount;
+            for (uint256 i = 0; i < _compounderFees.length; i++) {
+                _compounderFeeAmounts[i] = _compounderFees[i].amount;
+                _reserveFeeAmounts[i] = _reserveFees[i].amount;
                 require(
-                    _bountyAmounts[i] + _reserveAmounts[i] <=
+                    _compounderFeeAmounts[i] + _reserveFeeAmounts[i] <=
                         (maxPerformanceFeeNumerator * _tokenBalances[i]) /
                             maxPerformanceFeeDenominator,
-                    "Bounty amount too high"
+                    "Performance fee too high"
                 );
             }
         }
@@ -412,8 +418,8 @@ contract FarmBot is ERC20, AccessControl {
         // Perform swaps and add liquidity
         addLiquidity(
             _tokenBalances,
-            _bountyAmounts,
-            _reserveAmounts,
+            _compounderFeeAmounts,
+            _reserveFeeAmounts,
             _paths,
             _minAmountsOut,
             _deadline
@@ -428,12 +434,15 @@ contract FarmBot is ERC20, AccessControl {
             (lpBalance * interestEarnedDenominator) /
             lpTotalBalance;
 
-        // Send bounty to caller
+        // Send fees to compounder and reserve
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            rewardsTokens[i].safeTransfer(msg.sender, _bountyAmounts[i]);
-            rewardsTokens[i].safeTransfer(reserveAddress, _reserveAmounts[i]);
+            rewardsTokens[i].safeTransfer(msg.sender, _compounderFeeAmounts[i]);
+            rewardsTokens[i].safeTransfer(
+                reserveAddress,
+                _reserveFeeAmounts[i]
+            );
         }
-        revoBounty.issueAdditionalBounty(msg.sender);
+        revoFees.issueCompounderBonus(msg.sender);
         emit ClaimRewards(msg.sender, lpBalance);
     }
 }
