@@ -3,7 +3,6 @@
 pragma solidity >=0.4.24;
 
 interface IMoolaStakingRewards {
-
     // Views
 
     function lastTimeRewardApplicable() external view returns (uint256);
@@ -12,7 +11,9 @@ interface IMoolaStakingRewards {
 
     function earned(address account) external view returns (uint256);
 
-    function earnedExternal(address account) external returns (uint256[] calldata);
+    function earnedExternal(address account)
+        external
+        returns (uint256[] calldata);
 
     function getRewardForDuration() external view returns (uint256);
 

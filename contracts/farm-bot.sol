@@ -29,7 +29,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
     IUniswapV2Router02 public router; // Router address
 
-    // Acceptable slippage when swapping/minting LP; can be updated by admin
+    // Acceptable slippage when minting LP; can be updated by admin
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
 
@@ -42,25 +42,25 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
     address public reserveAddress;
 
-    modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, 'FarmBot: EXPIRED');
+    modifier ensure(uint256 deadline) {
+        require(deadline >= block.timestamp, "FarmBot: EXPIRED");
         _;
     }
 
     constructor(
-	address _reserveAddress,
+        address _reserveAddress,
         address _stakingRewards,
-	address _stakingToken,
+        address _stakingToken,
         address _revoBounty,
         address _router,
-	address[] memory _rewardsTokens,
+        address[] memory _rewardsTokens,
         string memory _symbol
     ) {
         stakingRewards = IMoolaStakingRewards(_stakingRewards);
 
-	for (uint i=0; i<_rewardsTokens.length; i++) {
-	    rewardsTokens.push(IERC20(_rewardsTokens[i]));
-	}
+        for (uint256 i = 0; i < _rewardsTokens.length; i++) {
+            rewardsTokens.push(IERC20(_rewardsTokens[i]));
+        }
 
         revoBounty = IRevoBounty(_revoBounty);
 
@@ -68,20 +68,26 @@ contract FarmBot is FarmbotERC20, AccessControl {
         stakingToken0 = IERC20(stakingToken.token0());
         stakingToken1 = IERC20(stakingToken.token1());
 
-	reserveAddress = _reserveAddress;
+        reserveAddress = _reserveAddress;
 
         symbol = _symbol;
 
         router = IUniswapV2Router02(_router);
 
-	_setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function updateBounty(address _revoBounty) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateBounty(address _revoBounty)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         revoBounty = IRevoBounty(_revoBounty);
     }
 
-    function updateSlippage(uint256 _slippageNumerator, uint256 _slippageDenominator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateSlippage(
+        uint256 _slippageNumerator,
+        uint256 _slippageDenominator
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         slippageNumerator = _slippageNumerator;
         slippageDenominator = _slippageDenominator;
     }
@@ -90,7 +96,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         if (lpTotalBalance == 0) {
             return _lpAmount;
         } else {
-            return _lpAmount * totalSupply / lpTotalBalance;
+            return (_lpAmount * totalSupply) / lpTotalBalance;
         }
     }
 
@@ -98,12 +104,16 @@ contract FarmBot is FarmbotERC20, AccessControl {
         if (totalSupply == 0) {
             return 0;
         } else {
-            return _fpAmount * lpTotalBalance / totalSupply;
+            return (_fpAmount * lpTotalBalance) / totalSupply;
         }
     }
 
     function deposit(uint256 _lpAmount) public {
-        bool transferSuccess = stakingToken.transferFrom(msg.sender, address(this), _lpAmount);
+        bool transferSuccess = stakingToken.transferFrom(
+            msg.sender,
+            address(this),
+            _lpAmount
+        );
         require(transferSuccess, "Transfer failed, aborting deposit");
 
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
@@ -120,7 +130,10 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
     function withdraw(uint256 _lpAmount) public {
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
-        require(balanceOf[msg.sender] >= _fpAmount, "Cannot withdraw more than the total balance of the owner");
+        require(
+            balanceOf[msg.sender] >= _fpAmount,
+            "Cannot withdraw more than the total balance of the owner"
+        );
 
         uint256 tokenBalance = stakingToken.balanceOf(address(this));
         if (_lpAmount > tokenBalance) {
@@ -135,7 +148,10 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
     function investInFarm() private {
         uint256 tokenBalance = stakingToken.balanceOf(address(this));
-        require(tokenBalance > 0, "Cannot invest in farm because tokenBalance is 0");
+        require(
+            tokenBalance > 0,
+            "Cannot invest in farm because tokenBalance is 0"
+        );
         stakingToken.approve(address(stakingRewards), tokenBalance);
         stakingRewards.stake(tokenBalance);
     }
@@ -144,26 +160,38 @@ contract FarmBot is FarmbotERC20, AccessControl {
     // Annoyingly, the MoolaStakingRewards.earnedExternal method is not declared as a view, so we cannot declare this
     // method as a view itself.
     function previewBounty() external returns (TokenAmount[] memory) {
-	uint[] memory _leftoverBalances = new uint[](rewardsTokens.length);
-	for (uint i=0; i < rewardsTokens.length; i++) {
-	    _leftoverBalances[i] = rewardsTokens[i].balanceOf(address(this));
-	}
+        uint256[] memory _leftoverBalances = new uint256[](
+            rewardsTokens.length
+        );
+        for (uint256 i = 0; i < rewardsTokens.length; i++) {
+            _leftoverBalances[i] = rewardsTokens[i].balanceOf(address(this));
+        }
 
-	// The MoolaStakingRewards contract treats the "native" reward token as fundamentally
-	// different than the "external" ones, so we have to query the earned balance separately
-	uint[] memory _interestEarned = new uint[](rewardsTokens.length);
-	_interestEarned[0] = stakingRewards.earned(address(this));
+        // The MoolaStakingRewards contract treats the "native" reward token as fundamentally
+        // different than the "external" ones, so we have to query the earned balance separately
+        uint256[] memory _interestEarned = new uint256[](rewardsTokens.length);
+        _interestEarned[0] = stakingRewards.earned(address(this));
 
-	uint[] memory _externalEarned = stakingRewards.earnedExternal(address(this));
-	require(_externalEarned.length == rewardsTokens.length - 1, "Incorrect amount of external rewards tokens");
-	for (uint i=0; i < _externalEarned.length; i++) {
-	    _interestEarned[i+1] = _externalEarned[i];
-	}
+        uint256[] memory _externalEarned = stakingRewards.earnedExternal(
+            address(this)
+        );
+        require(
+            _externalEarned.length == rewardsTokens.length - 1,
+            "Incorrect amount of external rewards tokens"
+        );
+        for (uint256 i = 0; i < _externalEarned.length; i++) {
+            _interestEarned[i + 1] = _externalEarned[i];
+        }
 
-        TokenAmount[] memory _rewardsTokenBalances = new TokenAmount[](rewardsTokens.length);
-	for (uint i=0; i < rewardsTokens.length; i++) {
-	    _rewardsTokenBalances[i] = TokenAmount(rewardsTokens[i], _interestEarned[i] + _leftoverBalances[i]);
-	}
+        TokenAmount[] memory _rewardsTokenBalances = new TokenAmount[](
+            rewardsTokens.length
+        );
+        for (uint256 i = 0; i < rewardsTokens.length; i++) {
+            _rewardsTokenBalances[i] = TokenAmount(
+                rewardsTokens[i],
+                _interestEarned[i] + _leftoverBalances[i]
+            );
+        }
 
         return revoBounty.calculateBountyFee(_rewardsTokenBalances);
     }
@@ -171,20 +199,21 @@ contract FarmBot is FarmbotERC20, AccessControl {
     // Figure out best-case scenario amount of token we can get and swap
     function swapForTokenInPool(
         address[] memory _swapPath,
-	uint _startTokenBudget,
-	IERC20 _startToken,
-	uint _minAmountOut,
-	uint _deadline
+        uint256 _startTokenBudget,
+        IERC20 _startToken,
+        uint256 _minAmountOut,
+        uint256 _deadline
     ) private returns (uint256) {
         if (_swapPath.length >= 2) {
             _startToken.approve(address(router), _startTokenBudget);
-            uint[] memory _swapResultAmounts = router.swapExactTokensForTokens(
-                _startTokenBudget,
-                _minAmountOut * slippageNumerator / slippageDenominator,
-                _swapPath,
-                address(this),
-                _deadline
-            );
+            uint256[] memory _swapResultAmounts = router
+                .swapExactTokensForTokens(
+                    _startTokenBudget,
+                    _minAmountOut,
+                    _swapPath,
+                    address(this),
+                    _deadline
+                );
             return _swapResultAmounts[_swapResultAmounts.length - 1];
         } else {
             return _startTokenBudget;
@@ -193,19 +222,33 @@ contract FarmBot is FarmbotERC20, AccessControl {
 
     function addLiquidity(
         uint256[] memory _tokenBalances,
-	uint256[] memory _bountyAmounts,
-	uint256[] memory _reserveAmounts,
-	address[][2][] memory _paths,
-	uint[][2] memory _minAmountsOut,
-	uint _deadline
+        uint256[] memory _bountyAmounts,
+        uint256[] memory _reserveAmounts,
+        address[][2][] memory _paths,
+        uint256[][2] memory _minAmountsOut,
+        uint256 _deadline
     ) private {
-	uint256 _totalAmountToken0 = 0;
-	uint256 _totalAmountToken1 = 0;
-	for (uint i=0; i < _bountyAmounts.length; i++) {
-	    uint256 _halfTokens = (_tokenBalances[i] - _bountyAmounts[i] - _reserveAmounts[i]) / 2;
-	    _totalAmountToken0 += swapForTokenInPool(_paths[i][0], _halfTokens, rewardsTokens[i], _minAmountsOut[i][0], _deadline);
-	    _totalAmountToken1 += swapForTokenInPool(_paths[i][1], _halfTokens, rewardsTokens[i], _minAmountsOut[i][1], _deadline);
-	}
+        uint256 _totalAmountToken0 = 0;
+        uint256 _totalAmountToken1 = 0;
+        for (uint256 i = 0; i < _bountyAmounts.length; i++) {
+            uint256 _halfTokens = (_tokenBalances[i] -
+                _bountyAmounts[i] -
+                _reserveAmounts[i]) / 2;
+            _totalAmountToken0 += swapForTokenInPool(
+                _paths[i][0],
+                _halfTokens,
+                rewardsTokens[i],
+                _minAmountsOut[i][0],
+                _deadline
+            );
+            _totalAmountToken1 += swapForTokenInPool(
+                _paths[i][1],
+                _halfTokens,
+                rewardsTokens[i],
+                _minAmountsOut[i][1],
+                _deadline
+            );
+        }
 
         // Approve the router to spend the bot's token0/token1
         stakingToken0.approve(address(router), _totalAmountToken0);
@@ -216,8 +259,8 @@ contract FarmBot is FarmbotERC20, AccessControl {
             address(stakingToken1),
             _totalAmountToken0,
             _totalAmountToken1,
-            _totalAmountToken0 * slippageNumerator / slippageDenominator,
-            _totalAmountToken1 * slippageNumerator / slippageDenominator,
+            (_totalAmountToken0 * slippageNumerator) / slippageDenominator,
+            (_totalAmountToken1 * slippageNumerator) / slippageDenominator,
             address(this),
             _deadline
         );
@@ -231,44 +274,69 @@ contract FarmBot is FarmbotERC20, AccessControl {
     // If a path corresponding to some swap has length < 2, the minimum amount specified for that swap will be ignored.
     function claimRewards(
         address[][2][] memory _paths,
-	uint[][2] memory _minAmountsOut,
-	uint _deadline
+        uint256[][2] memory _minAmountsOut,
+        uint256 _deadline
     ) public ensure(_deadline) onlyRole(COMPOUNDER_ROLE) {
-	require(
+        require(
             _paths.length == rewardsTokens.length,
-	    "Parameter _paths must have length equal to rewardsTokens"
-	);
-	require(
+            "Parameter _paths must have length equal to rewardsTokens"
+        );
+        require(
             _minAmountsOut.length == rewardsTokens.length,
-	    "Parameter _minAmountsOut must have length equal to rewardsTokens"
-	);
+            "Parameter _minAmountsOut must have length equal to rewardsTokens"
+        );
 
         stakingRewards.getReward();
 
         // compute bounty for the caller
         uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
-	uint256[] memory _bountyAmounts = new uint256[](rewardsTokens.length);
-	uint256[] memory _reserveAmounts = new uint256[](rewardsTokens.length);
+        uint256[] memory _bountyAmounts = new uint256[](rewardsTokens.length);
+        uint256[] memory _reserveAmounts = new uint256[](rewardsTokens.length);
 
-        {  // block is to prevent 'stack too deep' compilation error.
-	    TokenAmount[] memory _interestAccrued = new TokenAmount[](rewardsTokens.length);
-	    for (uint i=0; i< rewardsTokens.length; i++) {
-		_tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
-		_interestAccrued[i] = TokenAmount(rewardsTokens[i], _tokenBalances[i]);
-	    }
+        {
+            // block is to prevent 'stack too deep' compilation error.
+            TokenAmount[] memory _interestAccrued = new TokenAmount[](
+                rewardsTokens.length
+            );
+            for (uint256 i = 0; i < rewardsTokens.length; i++) {
+                _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
+                _interestAccrued[i] = TokenAmount(
+                    rewardsTokens[i],
+                    _tokenBalances[i]
+                );
+            }
 
-	    TokenAmount[] memory _bountyFees = revoBounty.calculateBountyFee(_interestAccrued);
-	    TokenAmount[] memory _reserveFees = revoBounty.calculateReserveFee(_interestAccrued);
-	    require(_bountyFees.length == _reserveFees.length, "Got conflicting results from RevoBounty");
-	    for (uint i=0; i < _bountyFees.length; i++) {
-		_bountyAmounts[i] = _bountyFees[i].amount;
-		_reserveAmounts[i] = _reserveFees[i].amount;
-		require(_bountyAmounts[i] + _reserveAmounts[i] <= maxFeeNumerator * _tokenBalances[i] / maxFeeDenominator, "Bounty amount too high");
-	    }
+            TokenAmount[] memory _bountyFees = revoBounty.calculateBountyFee(
+                _interestAccrued
+            );
+            TokenAmount[] memory _reserveFees = revoBounty.calculateReserveFee(
+                _interestAccrued
+            );
+            require(
+                _bountyFees.length == _reserveFees.length,
+                "Got conflicting results from RevoBounty"
+            );
+            for (uint256 i = 0; i < _bountyFees.length; i++) {
+                _bountyAmounts[i] = _bountyFees[i].amount;
+                _reserveAmounts[i] = _reserveFees[i].amount;
+                require(
+                    _bountyAmounts[i] + _reserveAmounts[i] <=
+                        (maxFeeNumerator * _tokenBalances[i]) /
+                            maxFeeDenominator,
+                    "Bounty amount too high"
+                );
+            }
         }
 
-	// Perform swaps and add liquidity
-	addLiquidity(_tokenBalances, _bountyAmounts, _reserveAmounts, _paths, _minAmountsOut, _deadline);
+        // Perform swaps and add liquidity
+        addLiquidity(
+            _tokenBalances,
+            _bountyAmounts,
+            _reserveAmounts,
+            _paths,
+            _minAmountsOut,
+            _deadline
+        );
 
         // How much LP we have to re-invest
         uint256 lpBalance = stakingToken.balanceOf(address(this));
@@ -279,10 +347,10 @@ contract FarmBot is FarmbotERC20, AccessControl {
         lpTotalBalance += lpBalance;
 
         // Send bounty to caller
-	for (uint i=0; i < rewardsTokens.length; i++) {
-	    rewardsTokens[i].transfer(msg.sender, _bountyAmounts[i]);
-	    rewardsTokens[i].transfer(reserveAddress, _reserveAmounts[i]);
-	}
+        for (uint256 i = 0; i < rewardsTokens.length; i++) {
+            rewardsTokens[i].transfer(msg.sender, _bountyAmounts[i]);
+            rewardsTokens[i].transfer(reserveAddress, _reserveAmounts[i]);
+        }
         revoBounty.issueAdditionalBounty(msg.sender);
     }
 }
