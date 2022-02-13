@@ -6,11 +6,11 @@ import "hardhat/console.sol";
 import "./IMoolaStakingRewards.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
-import "./FarmbotERC20.sol";
 import "./IRevoBounty.sol";
+import "./openzeppelin-solidity/contracts/ERC20.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
 
-contract FarmBot is FarmbotERC20, AccessControl {
+contract FarmBot is ERC20, AccessControl {
     bytes32 public constant COMPOUNDER_ROLE = keccak256("COMPOUNDER_ROLE");
 
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
@@ -55,7 +55,7 @@ contract FarmBot is FarmbotERC20, AccessControl {
         address _router,
         address[] memory _rewardsTokens,
         string memory _symbol
-    ) {
+    ) ERC20("FarmBot FP Token", _symbol) {
         stakingRewards = IMoolaStakingRewards(_stakingRewards);
 
         for (uint256 i = 0; i < _rewardsTokens.length; i++) {
@@ -69,8 +69,6 @@ contract FarmBot is FarmbotERC20, AccessControl {
         stakingToken1 = IERC20(stakingToken.token1());
 
         reserveAddress = _reserveAddress;
-
-        symbol = _symbol;
 
         router = IUniswapV2Router02(_router);
 
@@ -96,15 +94,15 @@ contract FarmBot is FarmbotERC20, AccessControl {
         if (lpTotalBalance == 0) {
             return _lpAmount;
         } else {
-            return (_lpAmount * totalSupply) / lpTotalBalance;
+            return (_lpAmount * totalSupply()) / lpTotalBalance;
         }
     }
 
     function getLpAmount(uint256 _fpAmount) public view returns (uint256) {
-        if (totalSupply == 0) {
+        if (totalSupply() == 0) {
             return 0;
         } else {
-            return (_fpAmount * lpTotalBalance) / totalSupply;
+            return (_fpAmount * lpTotalBalance) / totalSupply();
         }
     }
 
@@ -123,15 +121,15 @@ contract FarmBot is FarmbotERC20, AccessControl {
     }
 
     function withdrawAll() public {
-        require(balanceOf[msg.sender] > 0, "Cannot withdraw zero balance");
-        uint256 _lpAmount = getLpAmount(balanceOf[msg.sender]);
+        require(balanceOf(msg.sender) > 0, "Cannot withdraw zero balance");
+        uint256 _lpAmount = getLpAmount(balanceOf(msg.sender));
         withdraw(_lpAmount);
     }
 
     function withdraw(uint256 _lpAmount) public {
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
         require(
-            balanceOf[msg.sender] >= _fpAmount,
+            balanceOf(msg.sender) >= _fpAmount,
             "Cannot withdraw more than the total balance of the owner"
         );
 
