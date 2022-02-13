@@ -112,11 +112,12 @@ contract FarmBot is FarmbotERC20, AccessControl {
     }
 
     function deposit(uint256 _lpAmount) public {
-        stakingToken.safeTransferFrom(
+        bool transferSuccess = stakingToken.transferFrom(
             msg.sender,
             address(this),
             _lpAmount
         );
+        require(transferSuccess, "Transfer failed, aborting deposit");
 
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
         _mint(msg.sender, _fpAmount);
@@ -142,7 +143,8 @@ contract FarmBot is FarmbotERC20, AccessControl {
             stakingRewards.withdraw(_lpAmount - tokenBalance);
         }
 
-        stakingToken.safeTransfer(msg.sender, _lpAmount);
+        bool transferSuccess = stakingToken.transfer(msg.sender, _lpAmount);
+        require(transferSuccess, "Transfer failed, aborting withdrawal");
         _burn(msg.sender, _fpAmount);
         lpTotalBalance -= _lpAmount;
     }
