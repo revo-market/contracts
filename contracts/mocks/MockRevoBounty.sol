@@ -21,6 +21,18 @@ contract MockRevoBounty is IRevoBounty {
         return bounties;
     }
 
+    uint256 withdrawalFeeNumerator = 25;
+    uint256 withdrawalFeeDenominator = 10000;
+    function setWithdrawalFee(uint256 _feeNumerator, uint256 _feeDenominator) public {
+        withdrawalFeeNumerator = _feeNumerator;
+        withdrawalFeeDenominator = _feeDenominator;
+    }
+
+    function calculateWithdrawalFee(uint256 interestEarnedNumerator, uint256 interestEarnedDenominator) external view override returns (uint256 feeNumerator, uint256 feeDenominator) {
+        feeNumerator = withdrawalFeeNumerator;
+        feeDenominator = withdrawalFeeDenominator;
+    }
+
     function issueAdditionalBounty(address recipient) external override {
         return;
     }
