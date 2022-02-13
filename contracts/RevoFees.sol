@@ -12,13 +12,13 @@ contract RevoFees is Owned, IRevoFees {
 
     constructor(
         address _owner,
-        uint256 _bountyFeeNumerator,
-        uint256 _bountyFeeDenominator,
+        uint256 _compounderFeeNumerator,
+        uint256 _compounderFeeDenominator,
         uint256 _reserveFeeNumerator,
         uint256 _reserveFeeDenominator
     ) Owned(_owner) {
-        compounderFeeNumerator = _bountyFeeNumerator;
-        compounderFeeDenominator = _bountyFeeDenominator;
+        compounderFeeNumerator = _compounderFeeNumerator;
+        compounderFeeDenominator = _compounderFeeDenominator;
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
     }
