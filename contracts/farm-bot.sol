@@ -146,14 +146,16 @@ contract FarmBot is FarmbotERC20, AccessControl {
         lpTotalBalance -= _lpAmount;
     }
 
-    function investInFarm() private {
+    function investInFarm() private returns (uint256) {
         uint256 tokenBalance = stakingToken.balanceOf(address(this));
         require(
             tokenBalance > 0,
             "Cannot invest in farm because tokenBalance is 0"
         );
-        stakingToken.approve(address(stakingRewards), tokenBalance);
+        bool approved = stakingToken.approve(address(stakingRewards), tokenBalance);
+        require(approved, "Failed to approve staking token, cannot invest in farm");
         stakingRewards.stake(tokenBalance);
+        return tokenBalance;
     }
 
     // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
@@ -357,13 +359,8 @@ contract FarmBot is FarmbotERC20, AccessControl {
             _deadline
         );
 
-        // How much LP we have to re-invest
-        uint256 lpBalance = stakingToken.balanceOf(address(this));
-        stakingToken.approve(address(stakingRewards), lpBalance);
-
-        // Actually reinvest and adjust FP weight
-        stakingRewards.stake(lpBalance);
-        lpTotalBalance += lpBalance;
+        // reinvest LPs and adjust FP weight
+        lpTotalBalance += investInFarm();
 
         // Send bounty to caller
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
