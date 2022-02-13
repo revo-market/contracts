@@ -191,7 +191,7 @@ contract FarmBot is ERC20, AccessControl {
         emit Withdraw(msg.sender, _lpAmount);
     }
 
-    function investInFarm() private {
+    function investInFarm() private returns (uint256) {
         uint256 tokenBalance = stakingToken.balanceOf(address(this));
         require(
             tokenBalance > 0,
@@ -199,6 +199,7 @@ contract FarmBot is ERC20, AccessControl {
         );
         stakingToken.approve(address(stakingRewards), tokenBalance);
         stakingRewards.stake(tokenBalance);
+        return tokenBalance;
     }
 
     // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
@@ -402,12 +403,8 @@ contract FarmBot is ERC20, AccessControl {
             _deadline
         );
 
-        // How much LP we have to re-invest
-        uint256 lpBalance = stakingToken.balanceOf(address(this));
-        stakingToken.approve(address(stakingRewards), lpBalance);
-
-        // Actually reinvest and adjust FP weight
-        stakingRewards.stake(lpBalance);
+        // reinvest LPs and adjust FP weight
+        uint256 lpBalance = investInFarm();
         lpTotalBalance += lpBalance;
 
         // update interest rate
