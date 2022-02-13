@@ -169,11 +169,10 @@ contract FarmBot is ERC20, AccessControl {
         }
 
         // fee
-        (uint256 feeNumerator, uint256 feeDenominator) = revoFees
-            .withdrawalFee(
-                interestEarnedNumerator,
-                interestEarnedDenominator
-            );
+        (uint256 feeNumerator, uint256 feeDenominator) = revoFees.withdrawalFee(
+            interestEarnedNumerator,
+            interestEarnedDenominator
+        );
         uint256 _withdrawalFee = (feeNumerator * _lpAmount) / feeDenominator;
         uint256 _maxWithdrawalFee = (maxPerformanceFeeNumerator * _lpAmount) /
             maxPerformanceFeeDenominator;
@@ -242,18 +241,18 @@ contract FarmBot is ERC20, AccessControl {
                 _interestEarned[i] + _leftoverBalances[i]
             );
         }
-	return _rewardsTokenBalances;
+        return _rewardsTokenBalances;
     }
 
     // convenience methods for anyone considering calling claimRewards (who may want to compare bonus to gas cost)
     function previewCompounderBonus() external returns (TokenAmount[] memory) {
-	TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
-	return revoFees.compounderBonus(_rewardsTokenBalances);
+        TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
+        return revoFees.compounderBonus(_rewardsTokenBalances);
     }
 
     function previewCompounderFee() external returns (TokenAmount[] memory) {
-	TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
-	return revoFees.compounderFee(_rewardsTokenBalances);
+        TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
+        return revoFees.compounderFee(_rewardsTokenBalances);
     }
 
     // Figure out best-case scenario amount of token we can get and swap
@@ -369,8 +368,12 @@ contract FarmBot is ERC20, AccessControl {
 
         // compute fees
         uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
-        uint256[] memory _compounderFeeAmounts = new uint256[](rewardsTokens.length);
-        uint256[] memory _reserveFeeAmounts = new uint256[](rewardsTokens.length);
+        uint256[] memory _compounderFeeAmounts = new uint256[](
+            rewardsTokens.length
+        );
+        uint256[] memory _reserveFeeAmounts = new uint256[](
+            rewardsTokens.length
+        );
 
         {
             // block is to prevent 'stack too deep' compilation error.
@@ -429,7 +432,10 @@ contract FarmBot is ERC20, AccessControl {
         // Send fees to compounder and reserve
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
             rewardsTokens[i].safeTransfer(msg.sender, _compounderFeeAmounts[i]);
-            rewardsTokens[i].safeTransfer(reserveAddress, _reserveFeeAmounts[i]);
+            rewardsTokens[i].safeTransfer(
+                reserveAddress,
+                _reserveFeeAmounts[i]
+            );
         }
         revoFees.issueCompounderBonus(msg.sender);
         emit ClaimRewards(msg.sender, lpBalance);

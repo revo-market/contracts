@@ -14,9 +14,9 @@ interface IRevoFees {
         returns (TokenAmount[] memory);
 
     function compounderBonus(TokenAmount[] calldata interestAccrued)
-	external
-	view
-	returns (TokenAmount[] memory);
+        external
+        view
+        returns (TokenAmount[] memory);
 
     function reserveFee(TokenAmount[] calldata interestAccrued)
         external

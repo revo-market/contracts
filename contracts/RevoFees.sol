@@ -53,12 +53,12 @@ contract RevoFees is Owned, IRevoFees {
     }
 
     function compounderBonus(TokenAmount[] memory _interestAccrued)
-	external
-	view
-	override
-	returns (TokenAmount[] memory output)
+        external
+        view
+        override
+        returns (TokenAmount[] memory output)
     {
-	return new TokenAmount[](0); // intentionally returns empty list
+        return new TokenAmount[](0); // intentionally returns empty list
     }
 
     function compounderFee(TokenAmount[] memory _interestAccrued)
