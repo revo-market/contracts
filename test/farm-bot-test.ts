@@ -90,6 +90,7 @@ describe('Farm bot tests', () => {
 
   it('Admin role', async () => {
     const farmBotContract = (await farmBotFactory.deploy(
+      deployer.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
@@ -122,6 +123,7 @@ describe('Farm bot tests', () => {
 
   it('Compounder role', async () => {
     const farmBotContract = (await farmBotFactory.deploy(
+      deployer.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
@@ -212,7 +214,7 @@ describe('Farm bot tests', () => {
     await routerContract.setMockAmounts([1, 1])
 
     // compound
-    const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(60)
+    const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
     await farmBotContract.connect(compounder).compound(
       paths,
       [[0, 0], [0, 0], [0, 0]],
