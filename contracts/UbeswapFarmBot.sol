@@ -78,6 +78,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
     }
 
     constructor(
+        address _owner,
         address _reserveAddress,
         address _stakingRewards,
         address _stakingToken,
@@ -102,7 +103,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
 
         router = IUniswapV2Router02(_router);
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
     function updateReserveAddress(address _reserveAddress)
