@@ -12,7 +12,7 @@ import {
   MockRouter,
   MockMoolaStakingRewards,
   UbeswapFarmBot__factory,
-} from "../typechain";
+} from "../typechain"
 
 const {ethers} = require("hardhat")
 
@@ -76,6 +76,7 @@ describe('Farm bot tests', () => {
   })
   it('Able to deploy farm bot to local test chain', async () => {
     const farmBotContract: UbeswapFarmBot = await farmBotFactory.deploy(
+      deployer.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
@@ -163,6 +164,7 @@ describe('Farm bot tests', () => {
 
   it('Compound: doesnt break when called', async () => {
     const farmBotContract = (await farmBotFactory.deploy(
+      deployer.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
