@@ -87,6 +87,7 @@ describe('Farm bot tests', () => {
 
   it('Compound: doesnt break when called', async () => {
     const farmBotContract = (await farmBotFactory.deploy(
+      deployer.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
