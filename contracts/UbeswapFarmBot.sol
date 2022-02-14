@@ -91,7 +91,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         address _router,
         address[] memory _rewardsTokens,
         string memory _symbol
-    ) ERC20("FarmBot FP Token", _symbol) {
+    ) ERC20("Revo FP Token", _symbol) {
         stakingRewards = IMoolaStakingRewards(_stakingRewards);
 
         for (uint256 i = 0; i < _rewardsTokens.length; i++) {
