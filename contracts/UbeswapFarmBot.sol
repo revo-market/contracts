@@ -117,7 +117,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
     }
 
     function grantRole(bytes32 role, address account) public virtual override onlyRole(getRoleAdmin(role)) {
-        super(role, account);
+        super.grantRole(role, account);
         emit GrantRole(
             msg.sender,
             account,
