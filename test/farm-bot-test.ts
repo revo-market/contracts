@@ -6,7 +6,7 @@ const {ethers} = require("hardhat")
 
 describe('Farm bot tests', () => {
   it('Able to deploy farm bot to local test chain', async () => {
-    const [reserve] = await ethers.getSigners()
+    const [owner, reserve] = await ethers.getSigners()
     const revoFeesFactory = await ethers.getContractFactory('MockRevoFees')
     const feeContract: MockRevoFees = await revoFeesFactory.deploy()
 
@@ -51,6 +51,7 @@ describe('Farm bot tests', () => {
 
     const farmBotFactory = await ethers.getContractFactory('UbeswapFarmBot')
     const farmBotContract: UbeswapFarmBot = await farmBotFactory.deploy(
+      owner.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
