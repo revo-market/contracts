@@ -15,6 +15,7 @@ contract FarmBot is ERC20, AccessControl {
     using SafeERC20 for IERC20;
 
     event FeesUpdated(address indexed by, address indexed to);
+    event ReserveUpdated(address indexed by, address indexed reserveAddress);
     event SlippageUpdated(
         address indexed by,
         uint256 numerator,
@@ -102,6 +103,14 @@ contract FarmBot is ERC20, AccessControl {
         router = IUniswapV2Router02(_router);
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    function updateReserveAddress(address _reserveAddress)
+	external
+	onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+	reserveAddress = _reserveAddress;
+	emit ReserveUpdated(msg.sender, _reserveAddress);
     }
 
     function updateFees(address _revoFees)
