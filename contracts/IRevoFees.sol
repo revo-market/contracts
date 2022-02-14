@@ -9,20 +9,20 @@ struct TokenAmount {
 }
 
 interface IRevoFees {
-    function compounderFee(TokenAmount[] calldata interestAccrued)
+    function compounderFee(uint256 _interestAccrued)
+        external
+        view
+        returns (uint256);
+
+    function compounderBonus(TokenAmount calldata interestAccrued)
         external
         view
         returns (TokenAmount[] memory);
 
-    function compounderBonus(TokenAmount[] calldata interestAccrued)
+    function reserveFee(uint256 _interestAccrued)
         external
         view
-        returns (TokenAmount[] memory);
-
-    function reserveFee(TokenAmount[] calldata interestAccrued)
-        external
-        view
-        returns (TokenAmount[] memory);
+        returns (uint256);
 
     function withdrawalFee(
         uint256 interestEarnedNumerator,

@@ -27,8 +27,8 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         address indexed by,
         uint256 lpStaked,
         uint256 newLPTotalBalance,
-        uint256[] compounderFeeAmounts,
-        uint256[] reserveFeeAmounts
+        uint256 compounderFeeAmount,
+        uint256 reserveFeeAmount
     );
     event GrantRole(
         address indexed by,
@@ -178,7 +178,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
         _mint(msg.sender, _fpAmount);
         lpTotalBalance += _lpAmount;
-        investInFarm();
+        investInFarm(_lpAmount);
         emit Deposit(msg.sender, _lpAmount);
     }
 
@@ -225,69 +225,10 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         emit Withdraw(msg.sender, _lpAmount, _withdrawalFee);
     }
 
-    function investInFarm() private returns (uint256) {
-        uint256 tokenBalance = stakingToken.balanceOf(address(this));
-        require(
-            tokenBalance > 0,
-            "Cannot invest in farm because tokenBalance is 0"
-        );
-        stakingToken.approve(address(stakingRewards), tokenBalance);
-        stakingRewards.stake(tokenBalance);
-        return tokenBalance;
-    }
-
-    // Private method used to calculate what tokens would be available for reinvestment if compound were called
-    // right now.
-    // Annoyingly, the MoolaStakingRewards.earnedExternal method is not declared as a view, so we cannot declare this
-    // method as a view itself.
-    function calculateRewards() private returns (TokenAmount[] memory) {
-        uint256[] memory _leftoverBalances = new uint256[](
-            rewardsTokens.length
-        );
-        for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            _leftoverBalances[i] = rewardsTokens[i].balanceOf(address(this));
-        }
-
-        // The MoolaStakingRewards contract treats the "native" reward token as fundamentally
-        // different than the "external" ones, so we have to query the earned balance separately
-        uint256[] memory _interestEarned = new uint256[](rewardsTokens.length);
-        _interestEarned[0] = stakingRewards.earned(address(this));
-
-        uint256[] memory _externalEarned = stakingRewards.earnedExternal(
-            address(this)
-        );
-        require(
-            _externalEarned.length == rewardsTokens.length - 1,
-            "Incorrect amount of external rewards tokens"
-        );
-        for (uint256 i = 0; i < _externalEarned.length; i++) {
-            _interestEarned[i + 1] = _externalEarned[i];
-        }
-
-        TokenAmount[] memory _rewardsTokenBalances = new TokenAmount[](
-            rewardsTokens.length
-        );
-        for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            _rewardsTokenBalances[i] = TokenAmount(
-                rewardsTokens[i],
-                _interestEarned[i] + _leftoverBalances[i]
-            );
-        }
-        return _rewardsTokenBalances;
-    }
-
-    // convenience method for anyone considering calling compound (who may want to compare bounty to gas cost)
-    function previewCompounderRewards()
-        external
-        returns (
-            TokenAmount[] memory compounderFee,
-            TokenAmount[] memory compounderBonus
-        )
-    {
-        TokenAmount[] memory _rewardsTokenBalances = calculateRewards();
-
-        compounderFee = revoFees.compounderFee(_rewardsTokenBalances);
-        compounderBonus = revoFees.compounderBonus(_rewardsTokenBalances);
+    function investInFarm(uint256 _lpAmount) private {
+        require(_lpAmount > 0, "Cannot invest in farm because _lpAmount is 0");
+        stakingToken.approve(address(stakingRewards), _lpAmount);
+        stakingRewards.stake(_lpAmount);
     }
 
     // Figure out best-case scenario amount of token we can get and swap
@@ -316,18 +257,14 @@ contract UbeswapFarmBot is ERC20, AccessControl {
 
     function addLiquidity(
         uint256[] memory _tokenBalances,
-        uint256[] memory _compounderFee,
-        uint256[] memory _reserveFee,
         address[][2][] memory _paths,
         uint256[2][] memory _minAmountsOut,
         uint256 _deadline
     ) private {
         uint256 _totalAmountToken0 = 0;
         uint256 _totalAmountToken1 = 0;
-        for (uint256 i = 0; i < _compounderFee.length; i++) {
-            uint256 _halfTokens = (_tokenBalances[i] -
-                _compounderFee[i] -
-                _reserveFee[i]) / 2;
+        for (uint256 i = 0; i < _tokenBalances.length; i++) {
+            uint256 _halfTokens = _tokenBalances[i] / 2;
             _totalAmountToken0 += swapForTokenInPool(
                 _paths[i][0],
                 _halfTokens,
@@ -401,84 +338,51 @@ contract UbeswapFarmBot is ERC20, AccessControl {
 
         stakingRewards.getReward();
 
-        // compute fees
         uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
-        uint256[] memory _compounderFeeAmounts = new uint256[](
-            rewardsTokens.length
-        );
-        uint256[] memory _reserveFeeAmounts = new uint256[](
-            rewardsTokens.length
-        );
-
-        {
-            // block is to prevent 'stack too deep' compilation error.
-            TokenAmount[] memory _interestAccrued = new TokenAmount[](
-                rewardsTokens.length
-            );
-            for (uint256 i = 0; i < rewardsTokens.length; i++) {
-                _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
-                _interestAccrued[i] = TokenAmount(
-                    rewardsTokens[i],
-                    _tokenBalances[i]
-                );
-            }
-
-            TokenAmount[] memory _compounderFees = revoFees.compounderFee(
-                _interestAccrued
-            );
-            TokenAmount[] memory _reserveFees = revoFees.reserveFee(
-                _interestAccrued
-            );
-            require(
-                _compounderFees.length == _reserveFees.length,
-                "Got conflicting results from RevoFees"
-            );
-            for (uint256 i = 0; i < _compounderFees.length; i++) {
-                _compounderFeeAmounts[i] = _compounderFees[i].amount;
-                _reserveFeeAmounts[i] = _reserveFees[i].amount;
-                require(
-                    _compounderFeeAmounts[i] + _reserveFeeAmounts[i] <=
-                        (maxPerformanceFeeNumerator * _tokenBalances[i]) /
-                            maxPerformanceFeeDenominator,
-                    "Performance fee too high"
-                );
-            }
+        for (uint256 i = 0; i < rewardsTokens.length; i++) {
+            _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
         }
 
         // Perform swaps and add liquidity
-        addLiquidity(
-            _tokenBalances,
-            _compounderFeeAmounts,
-            _reserveFeeAmounts,
-            _paths,
-            _minAmountsOut,
-            _deadline
+        addLiquidity(_tokenBalances, _paths, _minAmountsOut, _deadline);
+
+        // send fees to compounder and reserve
+        uint256 lpBalance = stakingToken.balanceOf(address(this));
+        uint256 compounderFee = revoFees.compounderFee(lpBalance);
+        uint256 reserveFee = revoFees.reserveFee(lpBalance);
+        require(
+            compounderFee + reserveFee <=
+                (lpBalance * maxPerformanceFeeNumerator) /
+                    maxPerformanceFeeDenominator,
+            "Performance fee too high"
+        );
+        bool compounderFeeSuccess = stakingToken.transfer(
+            msg.sender,
+            compounderFee
+        );
+        bool reserveFeeSuccess = stakingToken.transfer(msg.sender, reserveFee);
+        require(
+            compounderFeeSuccess && reserveFeeSuccess,
+            "Sending fees failed"
         );
 
         // reinvest LPs and adjust FP weight
-        uint256 lpBalance = investInFarm();
-        lpTotalBalance += lpBalance;
+        uint256 lpEarnings = lpBalance - compounderFee - reserveFee;
+        investInFarm(lpEarnings);
+        lpTotalBalance += lpEarnings;
 
         // update interest rate
         interestEarnedNumerator =
-            (lpBalance * interestEarnedDenominator) /
+            (lpEarnings * interestEarnedDenominator) /
             lpTotalBalance;
 
-        // Send fees to compounder and reserve
-        for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            rewardsTokens[i].safeTransfer(msg.sender, _compounderFeeAmounts[i]);
-            rewardsTokens[i].safeTransfer(
-                reserveAddress,
-                _reserveFeeAmounts[i]
-            );
-        }
         revoFees.issueCompounderBonus(msg.sender);
         emit Compound(
             msg.sender,
-            lpBalance,
+            lpEarnings,
             lpTotalBalance,
-            _compounderFeeAmounts,
-            _reserveFeeAmounts
+            compounderFee,
+            reserveFee
         );
     }
 }
