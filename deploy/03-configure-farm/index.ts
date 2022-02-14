@@ -33,7 +33,7 @@ const main: DeployerFn<{}> = async ({
   const STAKING_TOKEN_ADDRESS = "0xf94fea0c87d2b357dc72b743b45a8cb682b0716e" // mcUSD-mcEUR LP address
   const lpBalance = await ERC20__factory.connect(STAKING_TOKEN_ADDRESS, deployer).balanceOf(COMPOUNDER_ADDRESS)
 
-  if (lpBalance.gt(ethers.BigNumber2.from(0))) {
+  if (lpBalance.gt(ethers.BigNumber.from(0))) {
     // Approve farm to spend it
     await ERC20__factory.connect(STAKING_TOKEN_ADDRESS, deployer).approve(FARM_ADDRESS, lpBalance)
     // Deposit LP
