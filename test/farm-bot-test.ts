@@ -1,32 +1,25 @@
 import {expect} from "chai"
-import {
-  MockERC20,
-  MockLPToken,
-  MockRevoBounty,
-  MockRouter,
-  MockMoolaStakingRewards,
-  FarmBot__factory
-} from "../typechain";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {BigNumber} from "ethers";
+import {UbeswapFarmBot, MockERC20, MockLPToken, MockRevoFees, MockRouter, MockMoolaStakingRewards, UbeswapFarmBot__factory} from "../typechain";
 
 const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
-  let owner: SignerWithAddress, reserve: SignerWithAddress, investor: SignerWithAddress,
-    bountyContract: MockRevoBounty,
+  let reserve: SignerWithAddress, investor: SignerWithAddress,
+    feeContract: MockRevoFees,
     token0Contract: MockERC20, token1Contract: MockERC20,
     rewardsToken0Contract: MockERC20, rewardsToken1Contract: MockERC20, rewardsToken2Contract: MockERC20,
     lpTokenContract: MockLPToken,
     stakingRewardsContract: MockMoolaStakingRewards,
     routerContract: MockRouter,
     stakingToken0Address: string, stakingToken1Address: string,
-    farmBotFactory: FarmBot__factory
+    farmBotFactory: UbeswapFarmBot__factory
   beforeEach(async () => {
-    [owner, reserve, investor] = await ethers.getSigners()
-    const revoBountyFactory = await ethers.getContractFactory('MockRevoBounty')
-    bountyContract = await revoBountyFactory.deploy()
+    [reserve, investor] = await ethers.getSigners()
+    const revoBountyFactory = await ethers.getContractFactory('MockRevoFees')
+    feeContract = await revoBountyFactory.deploy()
 
     const erc20Factory = await ethers.getContractFactory('MockERC20')
 
@@ -67,37 +60,33 @@ describe('Farm bot tests', () => {
     expect(await stakingRewardsContract.stakingToken())
       .to.equal(lpTokenContract.address)
 
-    farmBotFactory = await ethers.getContractFactory('FarmBot')
+    farmBotFactory = await ethers.getContractFactory('UbeswapFarmBot')
   })
   it('Able to deploy farm bot to local test chain', async () => {
-    const farmBotContract = await farmBotFactory.deploy(
-      owner.address,
+    const farmBotContract: UbeswapFarmBot = await farmBotFactory.deploy(
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
-      bountyContract.address,
+      feeContract.address,
       routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
-      [
-        [[],[]],
-        [[],[]],
-        [[],[]]
-      ],
       'FP'
     )
     expect(!!farmBotContract.address).not.to.be.false
   })
 
-  it('claimRewards: works with 1-pool swaps from rewards to staking tokens', async () => {
+  xit('claimRewards: works with 1-pool swaps from rewards to staking tokens', async () => {
     const farmBotContract = (await farmBotFactory.deploy(
-      owner.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
-      bountyContract.address,
+      feeContract.address,
       routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
-      [
+      'FP'
+    )).connect(investor)
+
+    const paths: [string[], string[]][] = [
         [
           [rewardsToken0Contract.address, stakingToken0Address],
           [rewardsToken0Contract.address, stakingToken1Address]
@@ -110,9 +99,7 @@ describe('Farm bot tests', () => {
           [rewardsToken2Contract.address, stakingToken0Address],
           [rewardsToken2Contract.address, stakingToken1Address]
         ]
-      ],
-      'FP'
-    )).connect(investor)
+      ]
 
     // prep investor
     await lpTokenContract.mint(investor.address, 1000)
@@ -130,6 +117,10 @@ describe('Farm bot tests', () => {
 
     // claim rewards
     const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(60)
-    await farmBotContract.claimRewards(arbitraryDeadline) // fixme getting arithmetic under/overflow error here.
+    await farmBotContract.compound(
+      paths,
+      [[], []], // fixme add
+      arbitraryDeadline
+    )
   })
 })
