@@ -109,20 +109,17 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         router = IUniswapV2Router02(_router);
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
-        emit GrantRole(
-            msg.sender,
-            _owner,
-            DEFAULT_ADMIN_ROLE
-        );
+        emit GrantRole(msg.sender, _owner, DEFAULT_ADMIN_ROLE);
     }
 
-    function grantRole(bytes32 role, address account) public virtual override onlyRole(getRoleAdmin(role)) {
+    function grantRole(bytes32 role, address account)
+        public
+        virtual
+        override
+        onlyRole(getRoleAdmin(role))
+    {
         super.grantRole(role, account);
-        emit GrantRole(
-            msg.sender,
-            account,
-            role
-        );
+        emit GrantRole(msg.sender, account, role);
     }
 
     function updateReserveAddress(address _reserveAddress)
