@@ -194,8 +194,8 @@ describe('Farm bot tests', () => {
       ]
 
       // load rewards
-      await stakingRewardsContract.setAmountEarnedExternal([1000, 1000, 1000])
-      await rewardsToken0Contract.mint(stakingRewardsContract.address, 1000);
+      await stakingRewardsContract.setAmountEarnedExternal([10, 10, 10])
+      await rewardsToken0Contract.mint(stakingRewardsContract.address, 1000)
       await rewardsToken1Contract.mint(stakingRewardsContract.address, 1000)
       await rewardsToken2Contract.mint(stakingRewardsContract.address, 1000)
 
@@ -204,26 +204,99 @@ describe('Farm bot tests', () => {
       await farmBotContract.connect(deployer).grantRole(compounderRole, compounder.address)
 
       // prep router mock
-      await routerContract.setMockLiquidity(1);
-      await routerContract.setMockAmounts([1, 1])
+      await routerContract.setMockLiquidity(10)
+      await routerContract.setMockAmounts([10, 10])
     })
-    it('doesnt break when called', async () => {
-      // prep investor
+    it('Single investor earns interest', async () => {
       await lpTokenContract.mint(investor0.address, 1000)
       expect(await lpTokenContract.balanceOf(investor0.address)).to.equal(1000)  // sanity check
 
+      // invest
       await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
       await farmBotContract.connect(investor0).deposit(1000)
       expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getFpAmount(1000)).to.equal(1000)
 
       // compound
       const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
       await farmBotContract.connect(compounder).compound(
         paths,
-        [[0, 0], [0, 0], [0, 0]],
+        [[10, 10], [10, 10], [10, 10]],
         arbitraryDeadline
       )
+
+      // check earnings
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1010)
+    })
+    it('Two investors share interest', async () => {
+      await lpTokenContract.mint(investor0.address, 1000)
+      await lpTokenContract.mint(investor1.address, 1000)
+
+      // investor0 deposit
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(0)
+      expect(await farmBotContract.getFpAmount(1000)).to.equal(1000)
+
+      // investor1 deposit
+      await lpTokenContract.connect(investor1).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor1).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)
+
+      // compound
+      const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        arbitraryDeadline
+      )
+
+      // check earnings
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1005)
+    })
+    it('Early investor earns more', async () => {
+      // investor0 deposit
+      await lpTokenContract.mint(investor0.address, 1000)
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(0)
+      expect(await farmBotContract.getFpAmount(1000)).to.equal(1000)
+
+      // first compound
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        BigNumber.from(Date.now()).div(1000).add(600) // arbitrary
+      )
+
+      // check earnings after first compound
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1010)
+
+      // investor1 deposit
+      await lpTokenContract.mint(investor1.address, 1010)
+      await lpTokenContract.connect(investor1).approve(farmBotContract.address, 1010)
+      await farmBotContract.connect(investor1).deposit(1010)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)  // since FP:LP ratio was 1010 when investor1 deposited
+
+      // second compound
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        BigNumber.from(Date.now()).div(1000).add(600) // arbitrary
+      )
+
+      // check earnings after second compound
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1015)  // since 10 LPs were split between each investor with 1000 FPs, the value of 1000 FPs rose by 5
     })
   })
-
 })
