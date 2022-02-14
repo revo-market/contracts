@@ -4,10 +4,10 @@ Smart contracts for Revo, a DeFi platform that makes yield farming easy and prof
 ## Installation / setup
 First install dependencies with yarn (just type `yarn` in the CLI from the project root and hit enter).
 
-Next compile contracts, which also populates the typechain types (which are needed elsewhere). 
+Next compile contracts, which also populates the typechain types (which are needed elsewhere).
 
-For first-time setup, follow the instructions in `scripts/deploy.ts` to prevent compilation errors
-due to missing generated types. 
+For first-time setup, follow the instructions in `deploy/index.ts` to prevent compilation errors
+due to missing generated types.
 
 Then run this from the CLI: `yarn compile-contracts` . This will generate the typescript types for our contracts;
 they will be saved to the `typechain` directory.
@@ -28,9 +28,9 @@ ALFAJORES_WALLET_PRIVATE_KEY=<fill this in> ALFAJORES_WALLET_PRIVATE_KEY_2=<fill
 or with regular node by first building with `yarn build` and then running the compiled JS file.
 
 ## Deploying to Alfajores
-1. Fill out `scripts/deploy.ts` with the desired parameters
-2. Compile contracts with `yarn compile-contracts`
-3. Deploy with `yarn deploy-contracts-alfajores` 
+1. Compile contracts with `yarn compile-contracts`
+2. Deploy with `yarn deploy-contracts-alfajores --step {your_step_here}`
 
 ## Deploying to Mainnet
-TODO (not tested, should be similar to Alfajores deployment)
+1. Compile contracts with `yarn compile-contracts`
+2. Deploy with `yarn deploy-contracts-mainnet --step {your_step_here}`
