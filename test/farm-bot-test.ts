@@ -1,13 +1,21 @@
 import {expect} from "chai"
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {BigNumber} from "ethers";
-import {UbeswapFarmBot, MockERC20, MockLPToken, MockRevoFees, MockRouter, MockMoolaStakingRewards, UbeswapFarmBot__factory} from "../typechain";
+import {
+  UbeswapFarmBot,
+  MockERC20,
+  MockLPToken,
+  MockRevoFees,
+  MockRouter,
+  MockMoolaStakingRewards,
+  UbeswapFarmBot__factory,
+} from "../typechain";
 
 const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
-  let reserve: SignerWithAddress, investor: SignerWithAddress,
+  let deployer: SignerWithAddress, reserve: SignerWithAddress, compounder: SignerWithAddress, investor: SignerWithAddress,
     feeContract: MockRevoFees,
     token0Contract: MockERC20, token1Contract: MockERC20,
     rewardsToken0Contract: MockERC20, rewardsToken1Contract: MockERC20, rewardsToken2Contract: MockERC20,
@@ -17,7 +25,7 @@ describe('Farm bot tests', () => {
     stakingToken0Address: string, stakingToken1Address: string,
     farmBotFactory: UbeswapFarmBot__factory
   beforeEach(async () => {
-    [reserve, investor] = await ethers.getSigners()
+    [deployer, reserve, compounder, investor] = await ethers.getSigners()
     const revoBountyFactory = await ethers.getContractFactory('MockRevoFees')
     feeContract = await revoBountyFactory.deploy()
 
@@ -46,7 +54,8 @@ describe('Farm bot tests', () => {
     )
 
     const routerFactory = await ethers.getContractFactory('MockRouter')
-    routerContract = await routerFactory.deploy(lpTokenContract.address)
+    routerContract = await routerFactory.deploy()
+    await routerContract.setLPToken(lpTokenContract.address);
 
     // sanity check mock LP contract
     stakingToken0Address = await lpTokenContract.token0()
@@ -75,7 +84,7 @@ describe('Farm bot tests', () => {
     expect(!!farmBotContract.address).not.to.be.false
   })
 
-  xit('claimRewards: works with 1-pool swaps from rewards to staking tokens', async () => {
+  it('Compound: doesnt break when called', async () => {
     const farmBotContract = (await farmBotFactory.deploy(
       reserve.address,
       stakingRewardsContract.address,
@@ -83,7 +92,7 @@ describe('Farm bot tests', () => {
       feeContract.address,
       routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
-      'FP'
+      'FP',
     )).connect(investor)
 
     const paths: [string[], string[]][] = [
@@ -115,11 +124,23 @@ describe('Farm bot tests', () => {
     await rewardsToken1Contract.mint(stakingRewardsContract.address, 1000)
     await rewardsToken2Contract.mint(stakingRewardsContract.address, 1000)
 
-    // claim rewards
+    // check if deployer is admin
+    const adminRole = await farmBotContract.DEFAULT_ADMIN_ROLE()
+    expect(await farmBotContract.hasRole(adminRole, deployer.address)).to.be.true
+
+    // give compound role
+    const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
+    await farmBotContract.connect(deployer).grantRole(compounderRole, compounder.address)
+
+    // prep router mock
+    await routerContract.setMockLiquidity(1);
+    await routerContract.setMockAmounts([1, 1])
+
+    // compound
     const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(60)
-    await farmBotContract.compound(
+    await farmBotContract.connect(compounder).compound(
       paths,
-      [[], []], // fixme add
+      [[0, 0], [0, 0], [0, 0]],
       arbitraryDeadline
     )
   })

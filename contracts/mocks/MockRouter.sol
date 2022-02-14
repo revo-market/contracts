@@ -5,9 +5,6 @@ import "./MockLPToken.sol";
 
 contract MockRouter is IUniswapV2Router01 {
     MockLPToken lpToken;
-    constructor(address _lpToken) {
-        lpToken = MockLPToken(_lpToken);
-    }
 
     function factory() external override pure returns (address) {
         require(false, "Shouldn't use factory for mock router");
@@ -16,6 +13,9 @@ contract MockRouter is IUniswapV2Router01 {
     uint mockLiquidity;
     function setMockLiquidity(uint _liquidity) public {
         mockLiquidity = _liquidity;
+    }
+    function setLPToken(address _lpToken) public {
+        lpToken = MockLPToken(_lpToken);
     }
     function addLiquidity(
         address tokenA,
@@ -29,6 +29,8 @@ contract MockRouter is IUniswapV2Router01 {
     ) external override returns (uint amountA, uint amountB, uint liquidity) {
         amountA = amountADesired;
         amountB = amountBDesired;
+        IERC20(tokenA).transferFrom(msg.sender, address(this), amountA);
+        IERC20(tokenB).transferFrom(msg.sender, address(this), amountB);
         liquidity = mockLiquidity;
         lpToken.mint(msg.sender, mockLiquidity);
     }
@@ -44,6 +46,8 @@ contract MockRouter is IUniswapV2Router01 {
         amountA = amountAMin;
         amountB = amountBMin;
         lpToken.burn(msg.sender, liquidity);
+        IERC20(tokenA).transfer(msg.sender, amountA);
+        IERC20(tokenB).transfer(msg.sender, amountB);
     }
     function removeLiquidityWithPermit(
         address tokenA,
@@ -55,6 +59,7 @@ contract MockRouter is IUniswapV2Router01 {
         uint deadline,
         bool approveMax, uint8 v, bytes32 r, bytes32 s
     ) external override returns (uint amountA, uint amountB) {
+        require(false, "Not implemented");
         amountA = amountAMin;
         amountB = amountBMin;
     }
@@ -72,7 +77,9 @@ contract MockRouter is IUniswapV2Router01 {
         address to,
         uint deadline
     ) external override returns (uint[] memory amounts) {
-        return mockAmounts;
+        MockERC20(path[0]).burn(msg.sender, amountIn);
+        amounts = mockAmounts;
+        MockERC20(path[path.length - 1]).mint(msg.sender, amounts[amounts.length - 1]);
     }
     function swapTokensForExactTokens(
         uint amountOut,
