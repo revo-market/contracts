@@ -1,4 +1,7 @@
 import {expect} from "chai"
+import * as chai from 'chai'
+import chaiAsPromised = require("chai-as-promised");
+chai.use(chaiAsPromised)
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {BigNumber} from "ethers";
 import {
@@ -84,6 +87,80 @@ describe('Farm bot tests', () => {
     expect(!!farmBotContract.address).not.to.be.false
   })
 
+  it('Admin role', async () => {
+    const farmBotContract = (await farmBotFactory.deploy(
+      reserve.address,
+      stakingRewardsContract.address,
+      lpTokenContract.address,
+      feeContract.address,
+      routerContract.address,
+      [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+      'FP',
+    ))
+
+    const adminRole = await farmBotContract.DEFAULT_ADMIN_ROLE()
+    expect(await farmBotContract.hasRole(adminRole, deployer.address)).to.be.true
+    expect(await farmBotContract.hasRole(adminRole, compounder.address)).to.be.false
+
+    const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
+    await farmBotContract.grantRole(compounderRole, compounder.address)
+
+    await farmBotContract.connect(deployer).updateFees(feeContract.address)
+    await expect(farmBotContract.connect(investor).updateFees(feeContract.address)).rejectedWith('AccessControl')
+    await expect(farmBotContract.connect(compounder).updateFees(feeContract.address)).rejectedWith('AccessControl')
+
+    await farmBotContract.connect(deployer).updateReserveAddress(reserve.address)
+    await expect(farmBotContract.connect(investor).updateReserveAddress(investor.address)).rejectedWith('AccessControl')
+    await expect(farmBotContract.connect(compounder).updateReserveAddress(reserve.address)).rejectedWith('AccessControl')
+
+
+    await farmBotContract.connect(deployer).updateSlippage(1, 100)
+    await expect(farmBotContract.connect(investor).updateSlippage(2, 100)).rejectedWith('AccessControl')
+    await expect(farmBotContract.connect(compounder).updateSlippage(1, 100)).rejectedWith('AccessControl')
+  })
+
+  it('Compounder role', async () => {
+    const farmBotContract = (await farmBotFactory.deploy(
+      reserve.address,
+      stakingRewardsContract.address,
+      lpTokenContract.address,
+      feeContract.address,
+      routerContract.address,
+      [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+      'FP',
+    ))
+
+    const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
+    expect(await farmBotContract.hasRole(compounderRole, compounder.address)).to.be.false
+
+    const paths: [string[], string[]][] = [
+      [
+        [rewardsToken0Contract.address, stakingToken0Address],
+        [rewardsToken0Contract.address, stakingToken1Address]
+      ],
+      [
+        [rewardsToken1Contract.address, stakingToken0Address],
+        [rewardsToken1Contract.address, stakingToken1Address]
+      ],
+      [
+        [rewardsToken2Contract.address, stakingToken0Address],
+        [rewardsToken2Contract.address, stakingToken1Address]
+      ]
+    ]
+    const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+    await expect(farmBotContract.connect(compounder).compound(
+      paths,
+      [[0, 0], [0, 0], [0, 0]],
+      arbitraryDeadline,
+    )).to.be.rejectedWith('AccessControl')
+    await farmBotContract.connect(deployer).grantRole(compounderRole, compounder.address)
+    await expect(farmBotContract.connect(compounder).compound(
+      paths,
+      [[0, 0], [0, 0], [0, 0]],
+      arbitraryDeadline,
+    )).not.to.be.rejectedWith('AccessControl')
+  })
+
   it('Compound: doesnt break when called', async () => {
     const farmBotContract = (await farmBotFactory.deploy(
       reserve.address,
@@ -123,10 +200,6 @@ describe('Farm bot tests', () => {
     await rewardsToken0Contract.mint(stakingRewardsContract.address, 1000);
     await rewardsToken1Contract.mint(stakingRewardsContract.address, 1000)
     await rewardsToken2Contract.mint(stakingRewardsContract.address, 1000)
-
-    // check if deployer is admin
-    const adminRole = await farmBotContract.DEFAULT_ADMIN_ROLE()
-    expect(await farmBotContract.hasRole(adminRole, deployer.address)).to.be.true
 
     // give compound role
     const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
