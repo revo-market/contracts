@@ -298,5 +298,20 @@ describe('Farm bot tests', () => {
       expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)
       expect(await farmBotContract.getLpAmount(1000)).to.equal(1015)  // since 10 LPs were split between each investor with 1000 FPs, the value of 1000 FPs rose by 5
     })
+    it('Works when a swap path is longer than 2', async () => {
+      // TODO
+    })
+    it('Works when a reward token is also a staking token', async () => {
+      // TODO
+    })
+    it('Sends correct reserve fee to the reserve', async () => {
+      // TODO
+    })
+    it('Sends correct compounder fee to compounder', async () => {
+      // TODO
+    })
+    it('If rewards tokens left over (due to swap messiness), reinvested next time', async () => {
+      // TODO
+    })
   })
 })
