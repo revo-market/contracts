@@ -302,7 +302,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         uint256[] memory _compounderFee,
         uint256[] memory _reserveFee,
         address[][2][] memory _paths,
-        uint256[][2] memory _minAmountsOut,
+        uint256[2][] memory _minAmountsOut,
         uint256 _deadline
     ) private {
         uint256 _totalAmountToken0 = 0;
@@ -370,7 +370,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
      */
     function compound(
         address[][2][] memory _paths,
-        uint256[][2] memory _minAmountsOut,
+        uint256[2][] memory _minAmountsOut,
         uint256 _deadline
     ) public ensure(_deadline) onlyRole(COMPOUNDER_ROLE) {
         require(
