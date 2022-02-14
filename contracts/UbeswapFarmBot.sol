@@ -11,7 +11,7 @@ import "./openzeppelin-solidity/contracts/ERC20.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
 import "./openzeppelin-solidity/contracts/SafeERC20.sol";
 
-contract FarmBot is ERC20, AccessControl {
+contract UbeswapFarmBot is ERC20, AccessControl {
     using SafeERC20 for IERC20;
 
     event FeesUpdated(address indexed by, address indexed to);
@@ -23,7 +23,7 @@ contract FarmBot is ERC20, AccessControl {
     );
     event Deposit(address indexed by, uint256 lpAmount);
     event Withdraw(address indexed by, uint256 lpAmount, uint256 fee);
-    event ClaimRewards(
+    event Compound(
         address indexed by,
         uint256 lpStaked,
         uint256 newLPTotalBalance,
@@ -35,7 +35,7 @@ contract FarmBot is ERC20, AccessControl {
 
     uint256 public lpTotalBalance; // total number of LP tokens owned by Farm Bot
 
-    // fractional increase of LP balance last time claimRewards was called. Used to calculate withdrawal fee.
+    // fractional increase of LP balance last time compound was called. Used to calculate withdrawal fee.
     uint256 public interestEarnedNumerator;
     uint256 public interestEarnedDenominator = 10000;
 
@@ -58,9 +58,9 @@ contract FarmBot is ERC20, AccessControl {
     uint256 public slippageDenominator = 100;
 
     // Configurable fees contract. Determines:
-    //  - "compounder fee" for calling claimRewards on behalf of farm investors.
+    //  - "compounder fee" for calling compound on behalf of farm investors.
     //  - "reserve fee" sent to reserve
-    //  - "compounder bonus" (paid by reserve) for calling claimRewards
+    //  - "compounder bonus" (paid by reserve) for calling compound
     //  - "withdrawal fee" for withdrawing (necessary for security, guaranteed <= 0.25%)
     //  Note that compounder fees + reserve fees are "performance fees", meaning they are charged only on earnings.
     //  Performance fees are guaranteed to be at most 4%, the current standard, and should be much less.
@@ -219,7 +219,7 @@ contract FarmBot is ERC20, AccessControl {
         return tokenBalance;
     }
 
-    // Private method used to calculate what tokens would be available for reinvestment if claimRewards were called
+    // Private method used to calculate what tokens would be available for reinvestment if compound were called
     // right now.
     // Annoyingly, the MoolaStakingRewards.earnedExternal method is not declared as a view, so we cannot declare this
     // method as a view itself.
@@ -259,7 +259,7 @@ contract FarmBot is ERC20, AccessControl {
         return _rewardsTokenBalances;
     }
 
-    // convenience method for anyone considering calling claimRewards (who may want to compare bounty to gas cost)
+    // convenience method for anyone considering calling compound (who may want to compare bounty to gas cost)
     function previewCompounderRewards()
         external
         returns (
@@ -368,7 +368,7 @@ contract FarmBot is ERC20, AccessControl {
      *  each rewardsToken. If we do not receive at least this much of token0/token1 for some swap, the transaction will revert.
      * If a path corresponding to some swap has length < 2, the minimum amount specified for that swap will be ignored.
      */
-    function claimRewards(
+    function compound(
         address[][2][] memory _paths,
         uint256[][2] memory _minAmountsOut,
         uint256 _deadline
@@ -456,7 +456,7 @@ contract FarmBot is ERC20, AccessControl {
             );
         }
         revoFees.issueCompounderBonus(msg.sender);
-        emit ClaimRewards(
+        emit Compound(
             msg.sender,
             lpBalance,
             lpTotalBalance,
