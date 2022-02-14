@@ -30,6 +30,11 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         uint256[] compounderFeeAmounts,
         uint256[] reserveFeeAmounts
     );
+    event GrantRole(
+        address indexed by,
+        address indexed newRoleRecipient,
+        bytes32 role
+    );
 
     bytes32 public constant COMPOUNDER_ROLE = keccak256("COMPOUNDER_ROLE");
 
@@ -104,6 +109,20 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         router = IUniswapV2Router02(_router);
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
+        emit GrantRole(
+            msg.sender,
+            _owner,
+            DEFAULT_ADMIN_ROLE
+        );
+    }
+
+    function grantRole(bytes32 role, address account) public virtual override onlyRole(getRoleAdmin(role)) {
+        super(role, account);
+        emit GrantRole(
+            msg.sender,
+            account,
+            role
+        );
     }
 
     function updateReserveAddress(address _reserveAddress)
