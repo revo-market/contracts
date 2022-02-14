@@ -106,11 +106,11 @@ contract FarmBot is ERC20, AccessControl {
     }
 
     function updateReserveAddress(address _reserveAddress)
-	external
-	onlyRole(DEFAULT_ADMIN_ROLE)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
-	reserveAddress = _reserveAddress;
-	emit ReserveUpdated(msg.sender, _reserveAddress);
+        reserveAddress = _reserveAddress;
+        emit ReserveUpdated(msg.sender, _reserveAddress);
     }
 
     function updateFees(address _revoFees)
