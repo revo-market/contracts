@@ -1,12 +1,12 @@
 import {expect} from "chai"
-import {FarmBot, MockERC20, MockLPToken, MockRevoFees, MockRouter, MockMoolaStakingRewards} from "../typechain";
+import {UbeswapFarmBot, MockERC20, MockLPToken, MockRevoFees, MockRouter, MockMoolaStakingRewards} from "../typechain";
 
 const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
   it('Able to deploy farm bot to local test chain', async () => {
-    const [owner, reserve] = await ethers.getSigners()
+    const [reserve] = await ethers.getSigners()
     const revoFeesFactory = await ethers.getContractFactory('MockRevoFees')
     const feeContract: MockRevoFees = await revoFeesFactory.deploy()
 
@@ -49,20 +49,14 @@ describe('Farm bot tests', () => {
     expect(await stakingRewardsContract.stakingToken())
       .to.equal(lpTokenContract.address)
 
-    const farmBotFactory = await ethers.getContractFactory('FarmBot')
-    const farmBotContract: FarmBot = await farmBotFactory.deploy(
-      owner.address,
+    const farmBotFactory = await ethers.getContractFactory('UbeswapFarmBot')
+    const farmBotContract: UbeswapFarmBot = await farmBotFactory.deploy(
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
       feeContract.address,
       routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
-      [
-	[[],[]],
-	[[],[]],
-	[[],[]]
-      ],
       'FP'
     )
 
