@@ -1,5 +1,6 @@
 import * as dotenv from "dotenv";
 
+// import "hardhat-deploy" // This should apparently get us verification "for free", but I haven't been able to get it working
 import * as path from "path";
 import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
@@ -13,7 +14,7 @@ import {
 import { fornoURLs, ICeloNetwork,
   makeDeployTask
 } from "@ubeswap/hardhat-celo";
-import { main } from './scripts/deploy'
+import deployers from './deploy/index'
 
 dotenv.config();
 
@@ -26,10 +27,6 @@ task("accounts", "Prints the list of accounts", async (_taskArgs, hre) => {
     console.log(account.address);
   }
 });
-
-const deployers = {
-  'deploy-bot': main
-}
 
 task("deploy", "Deploys a step", (async (...args) =>
   (await makeDeployTask({
