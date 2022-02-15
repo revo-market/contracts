@@ -40,20 +40,7 @@ contract RevoFees is Owned, IRevoFees {
         reserveFeeDenominator = _reserveFeeDenominator;
     }
 
-    function calculateFee(
-        TokenAmount[] memory _interestAccrued,
-        uint256 _feeNumerator,
-        uint256 _feeDenominator
-    ) private pure returns (TokenAmount[] memory output) {
-        output = new TokenAmount[](_interestAccrued.length);
-        for (uint256 idx = 0; idx < _interestAccrued.length; idx++) {
-            uint256 _fee = (_interestAccrued[idx].amount * _feeNumerator) /
-                _feeDenominator;
-            output[idx] = TokenAmount(_interestAccrued[idx].token, _fee);
-        }
-    }
-
-    function compounderBonus(TokenAmount[] memory _interestAccrued)
+    function compounderBonus(TokenAmount memory _interestAccrued)
         external
         pure
         override
@@ -62,30 +49,24 @@ contract RevoFees is Owned, IRevoFees {
         return new TokenAmount[](0); // intentionally returns empty list
     }
 
-    function compounderFee(TokenAmount[] memory _interestAccrued)
+    function compounderFee(uint256 _interestAccrued)
         external
         view
         override
-        returns (TokenAmount[] memory output)
+        returns (uint256)
     {
-        output = calculateFee(
-            _interestAccrued,
-            compounderFeeNumerator,
-            compounderFeeDenominator
-        );
+        return
+            (_interestAccrued * compounderFeeNumerator) /
+            compounderFeeDenominator;
     }
 
-    function reserveFee(TokenAmount[] memory _interestAccrued)
+    function reserveFee(uint256 _interestAccrued)
         external
         view
         override
-        returns (TokenAmount[] memory output)
+        returns (uint256)
     {
-        output = calculateFee(
-            _interestAccrued,
-            reserveFeeNumerator,
-            reserveFeeDenominator
-        );
+        return (_interestAccrued * reserveFeeNumerator) / reserveFeeDenominator;
     }
 
     function issueCompounderBonus(address recipient) external pure override {
