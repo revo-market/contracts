@@ -25,18 +25,25 @@ contract RevoFees is Owned, IRevoFees {
         uint256 reserveFeeNumerator,
         uint256 reserveFeeDenominator
     );
+    uint256 public withdrawalFeeNumerator;
+    uint256 public withdrawalFeeDenominator;
+    bool public useDynamicWithdrawalFees;
 
     constructor(
         address _owner,
         uint256 _compounderFeeNumerator,
         uint256 _compounderFeeDenominator,
         uint256 _reserveFeeNumerator,
-        uint256 _reserveFeeDenominator
+        uint256 _reserveFeeDenominator,
+        uint256 _withdrawalFeeNumerator,
+        uint256 _withdrawalFeeDenominator
     ) Owned(_owner) {
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
+        withdrawalFeeNumerator = _withdrawalFeeNumerator;
+        withdrawalFeeDenominator = _withdrawalFeeDenominator;
     }
 
     function updateCompounderFee(
@@ -63,6 +70,14 @@ contract RevoFees is Owned, IRevoFees {
             _reserveFeeNumerator,
             _reserveFeeDenominator
         );
+    }
+
+    function updateWithdrawalFee(
+        uint256 _withdrawalFeeNumerator,
+        uint256 _withdrawalFeeDenominator
+    ) external onlyOwner {
+        withdrawalFeeNumerator = _withdrawalFeeNumerator;
+        withdrawalFeeDenominator = _withdrawalFeeDenominator;
     }
 
     /*
@@ -107,6 +122,19 @@ contract RevoFees is Owned, IRevoFees {
         return; // intentionally does nothing
     }
 
+    /**
+     * Set a flag for whether dynamic withdrawal fees should be used.
+     *
+     * If true, only rewards earned in the last compounding interval will be counted towards fees.@author
+     *
+     * Otherwise, static withdrawal fees will be used.
+     */
+    function setUseDynamicWithdrawalFees(bool _useDynamicWithdrawalFees)
+        external
+    {
+        useDynamicWithdrawalFees = _useDynamicWithdrawalFees;
+    }
+
     /*
      * Check the fee for withdrawing funds from a Revo Farm Bot.
      *
@@ -123,14 +151,17 @@ contract RevoFees is Owned, IRevoFees {
     function withdrawalFee(
         uint256 interestEarnedNumerator,
         uint256 interestEarnedDenominator
-    )
-        external
-        pure
-        override
-        returns (uint256 feeNumerator, uint256 feeDenominator)
-    {
-        // 0.25% (ignores interest earned for simplicity)
-        feeNumerator = 25;
-        feeDenominator = 10000;
+    ) external override returns (uint256 feeNumerator, uint256 feeDenominator) {
+        if (
+            useDynamicWithdrawalFees &&
+            interestEarnedNumerator * withdrawalFeeDenominator <
+            withdrawalFeeNumerator * interestEarnedDenominator
+        ) {
+            feeNumerator = interestEarnedNumerator;
+            feeDenominator = interestEarnedDenominator;
+        } else {
+            feeNumerator = withdrawalFeeNumerator;
+            feeDenominator = withdrawalFeeDenominator;
+        }
     }
 }
