@@ -360,7 +360,10 @@ contract UbeswapFarmBot is ERC20, AccessControl {
             msg.sender,
             compounderFee
         );
-        bool reserveFeeSuccess = stakingToken.transfer(reserveAddress, reserveFee);
+        bool reserveFeeSuccess = stakingToken.transfer(
+            reserveAddress,
+            reserveFee
+        );
         require(
             compounderFeeSuccess && reserveFeeSuccess,
             "Sending fees failed"
