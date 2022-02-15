@@ -5,24 +5,25 @@ import "../IRevoFees.sol";
 contract MockRevoFees is IRevoFees {
     TokenAmount[] bonuses;
 
-    function addBonus(TokenAmount memory _tokenAmount) external {
-        bonuses.push(_tokenAmount);
+    uint256 compounderFeeAmount;
+    function setCompounderFee(uint256 _compounderFee) external {
+        compounderFeeAmount = _compounderFee;
     }
 
-    function removeBonus() external {
-        bonuses.pop();
+    function compounderFee(uint256 _interestAccrued) external override view returns (uint256) {
+        return compounderFeeAmount;
     }
 
-    function compounderFee(TokenAmount[] calldata interestAccrued) external override view returns (TokenAmount[] memory) {
-        return bonuses;
-    }
-
-    function compounderBonus(TokenAmount[] calldata interestAccrued) external override view returns (TokenAmount[] memory) {
+    function compounderBonus(TokenAmount memory _interestAccrued) external override view returns (TokenAmount[] memory) {
         return new TokenAmount[](0);
     }
 
-    function reserveFee(TokenAmount[] calldata interestAccrued) external override view returns (TokenAmount[] memory) {
-        return bonuses;
+    uint256 reserveFeeAmount;
+    function setReserveFee(uint256 _reserveFee) external {
+        reserveFeeAmount = _reserveFee;
+    }
+    function reserveFee(uint256 _interestAccrued) external override view returns (uint256) {
+        return reserveFeeAmount;
     }
 
     uint256 withdrawalFeeNumerator = 25;
