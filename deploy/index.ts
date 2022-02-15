@@ -16,11 +16,13 @@
 import revoFeeDeployer from './01-revo-fees/index'
 import mcUSDmcEURFarmDeployer from './02-mcusd-mceur-farm/index'
 import configureFarm from './03-configure-farm/index'
+import addLiquidity from './04-add-liquidity/index'
 
 export default {
   'revo-fees': revoFeeDeployer,
   'mcusd-mceur': mcUSDmcEURFarmDeployer,
-  'configure-farm': configureFarm
+  'configure-farm': configureFarm,
+  'add-liquidity': addLiquidity
 }
 
 
