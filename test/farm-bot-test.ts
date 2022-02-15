@@ -314,4 +314,47 @@ describe('Farm bot tests', () => {
       // TODO
     })
   })
+  describe('Deposit/withdraw', () => {
+    let farmBotContract: UbeswapFarmBot
+    beforeEach(async () => {
+      farmBotContract = (await farmBotFactory.deploy(
+        deployer.address,
+        reserve.address,
+        stakingRewardsContract.address,
+        lpTokenContract.address,
+        feeContract.address,
+        routerContract.address,
+        [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+        'FP',
+      ))
+    })
+    it('deposit credits correct user', async () => {
+      await lpTokenContract.mint(investor0.address, 1000)
+      await lpTokenContract.mint(investor1.address, 500)
+      expect(await lpTokenContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await lpTokenContract.balanceOf(investor1.address)).to.equal(500)
+
+      // depositing credits correct user
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+      expect(await lpTokenContract.balanceOf(investor0.address)).to.equal(0)
+      expect(await lpTokenContract.balanceOf(investor1.address)).to.equal(500)
+      await lpTokenContract.connect(investor1).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor1).deposit(500)
+      expect(await lpTokenContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await lpTokenContract.balanceOf(investor1.address)).to.equal(500)
+    })
+    it('depositing shouldnt affect FP:LP ratio', async () => {
+      // TODO
+    })
+    it("withdrawing shouldnt affect FP:LP ratio", async () => {
+      // TODO
+    })
+    it('withdraw sends correct fees to reserve', async () => {
+      // TODO
+    })
+    it('able to withdraw earnings after compounding', async () => {
+      // TODO
+    })
+  })
 })
