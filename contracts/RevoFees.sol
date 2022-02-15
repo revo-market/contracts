@@ -11,17 +11,24 @@ contract RevoFees is Owned, IRevoFees {
     uint256 public reserveFeeNumerator;
     uint256 public reserveFeeDenominator;
 
+    uint256 public withdrawalFeeNumerator;
+    uint256 public withdrawalFeeDenominator;
+
     constructor(
         address _owner,
         uint256 _compounderFeeNumerator,
         uint256 _compounderFeeDenominator,
         uint256 _reserveFeeNumerator,
-        uint256 _reserveFeeDenominator
+        uint256 _reserveFeeDenominator,
+        uint256 _withdrawalFeeNumerator,
+        uint256 _withdrawalFeeDenominator
     ) Owned(_owner) {
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
+        withdrawalFeeNumerator = _withdrawalFeeNumerator;
+        withdrawalFeeDenominator = _withdrawalFeeDenominator;
     }
 
     function updateCompounderFee(
@@ -38,6 +45,14 @@ contract RevoFees is Owned, IRevoFees {
     ) external onlyOwner {
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
+    }
+
+    function updateWithdrawalFee(
+        uint256 _withdrawalFeeNumerator,
+        uint256 _withdrawalFeeDenominator
+    ) external onlyOwner {
+        withdrawalFeeNumerator = _withdrawalFeeNumerator;
+        withdrawalFeeDenominator = _withdrawalFeeDenominator;
     }
 
     function compounderBonus(TokenAmount memory _interestAccrued)
@@ -78,12 +93,12 @@ contract RevoFees is Owned, IRevoFees {
         uint256 interestEarnedDenominator
     )
         external
-        pure
+        view
         override
         returns (uint256 feeNumerator, uint256 feeDenominator)
     {
-        // 0.25% (ignores interest earned for simplicity)
-        feeNumerator = 25;
-        feeDenominator = 10000;
+        // intentionally ignores interest earned for now
+        feeNumerator = withdrawalFeeNumerator;
+        feeDenominator = withdrawalFeeDenominator;
     }
 }
