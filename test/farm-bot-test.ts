@@ -18,7 +18,7 @@ const {ethers} = require("hardhat")
 
 
 describe('Farm bot tests', () => {
-  let deployer: SignerWithAddress, reserve: SignerWithAddress, compounder: SignerWithAddress, investor: SignerWithAddress,
+  let deployer: SignerWithAddress, reserve: SignerWithAddress, compounder: SignerWithAddress, investor0: SignerWithAddress, investor1: SignerWithAddress,
     feeContract: MockRevoFees,
     token0Contract: MockERC20, token1Contract: MockERC20,
     rewardsToken0Contract: MockERC20, rewardsToken1Contract: MockERC20, rewardsToken2Contract: MockERC20,
@@ -28,7 +28,7 @@ describe('Farm bot tests', () => {
     stakingToken0Address: string, stakingToken1Address: string,
     farmBotFactory: UbeswapFarmBot__factory
   beforeEach(async () => {
-    [deployer, reserve, compounder, investor] = await ethers.getSigners()
+    [deployer, reserve, compounder, investor0, investor1] = await ethers.getSigners()
     const revoBountyFactory = await ethers.getContractFactory('MockRevoFees')
     feeContract = await revoBountyFactory.deploy()
 
@@ -108,16 +108,16 @@ describe('Farm bot tests', () => {
     await farmBotContract.grantRole(compounderRole, compounder.address)
 
     await farmBotContract.connect(deployer).updateFees(feeContract.address)
-    await expect(farmBotContract.connect(investor).updateFees(feeContract.address)).rejectedWith('AccessControl')
+    await expect(farmBotContract.connect(investor0).updateFees(feeContract.address)).rejectedWith('AccessControl')
     await expect(farmBotContract.connect(compounder).updateFees(feeContract.address)).rejectedWith('AccessControl')
 
     await farmBotContract.connect(deployer).updateReserveAddress(reserve.address)
-    await expect(farmBotContract.connect(investor).updateReserveAddress(investor.address)).rejectedWith('AccessControl')
+    await expect(farmBotContract.connect(investor0).updateReserveAddress(investor0.address)).rejectedWith('AccessControl')
     await expect(farmBotContract.connect(compounder).updateReserveAddress(reserve.address)).rejectedWith('AccessControl')
 
 
     await farmBotContract.connect(deployer).updateSlippage(1, 100)
-    await expect(farmBotContract.connect(investor).updateSlippage(2, 100)).rejectedWith('AccessControl')
+    await expect(farmBotContract.connect(investor0).updateSlippage(2, 100)).rejectedWith('AccessControl')
     await expect(farmBotContract.connect(compounder).updateSlippage(1, 100)).rejectedWith('AccessControl')
   })
 
@@ -164,19 +164,21 @@ describe('Farm bot tests', () => {
     )).not.to.be.rejectedWith('AccessControl')
   })
 
-  it('Compound: doesnt break when called', async () => {
-    const farmBotContract = (await farmBotFactory.deploy(
-      deployer.address,
-      reserve.address,
-      stakingRewardsContract.address,
-      lpTokenContract.address,
-      feeContract.address,
-      routerContract.address,
-      [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
-      'FP',
-    )).connect(investor)
+  describe('Compound', () => {
+    let farmBotContract: UbeswapFarmBot, paths: [string[], string[]][]
+    beforeEach(async () => {
+      farmBotContract = (await farmBotFactory.deploy(
+        deployer.address,
+        reserve.address,
+        stakingRewardsContract.address,
+        lpTokenContract.address,
+        feeContract.address,
+        routerContract.address,
+        [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+        'FP',
+      ))
 
-    const paths: [string[], string[]][] = [
+      paths = [
         [
           [rewardsToken0Contract.address, stakingToken0Address],
           [rewardsToken0Contract.address, stakingToken1Address]
@@ -191,34 +193,125 @@ describe('Farm bot tests', () => {
         ]
       ]
 
-    // prep investor
-    await lpTokenContract.mint(investor.address, 1000)
-    expect(await lpTokenContract.balanceOf(investor.address)).to.equal(1000)  // sanity check
+      // load rewards
+      await stakingRewardsContract.setAmountEarnedExternal([10, 10, 10])
+      await rewardsToken0Contract.mint(stakingRewardsContract.address, 1000)
+      await rewardsToken1Contract.mint(stakingRewardsContract.address, 1000)
+      await rewardsToken2Contract.mint(stakingRewardsContract.address, 1000)
 
-    await lpTokenContract.connect(investor).approve(farmBotContract.address, 1000)
-    await farmBotContract.deposit(1000)
-    expect(await farmBotContract.balanceOf(investor.address)).to.equal(1000)
+      // give compound role
+      const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
+      await farmBotContract.connect(deployer).grantRole(compounderRole, compounder.address)
 
-    // load rewards
-    await stakingRewardsContract.setAmountEarnedExternal([1000, 1000, 1000])
-    await rewardsToken0Contract.mint(stakingRewardsContract.address, 1000);
-    await rewardsToken1Contract.mint(stakingRewardsContract.address, 1000)
-    await rewardsToken2Contract.mint(stakingRewardsContract.address, 1000)
+      // prep router mock
+      await routerContract.setMockLiquidity(10)
+      await routerContract.setMockAmounts([10, 10])
+    })
+    it('Single investor earns interest', async () => {
+      await lpTokenContract.mint(investor0.address, 1000)
+      expect(await lpTokenContract.balanceOf(investor0.address)).to.equal(1000)  // sanity check
 
-    // give compound role
-    const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
-    await farmBotContract.connect(deployer).grantRole(compounderRole, compounder.address)
+      // invest
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getFpAmount(1000)).to.equal(1000)
 
-    // prep router mock
-    await routerContract.setMockLiquidity(1);
-    await routerContract.setMockAmounts([1, 1])
+      // compound
+      const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        arbitraryDeadline
+      )
 
-    // compound
-    const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
-    await farmBotContract.connect(compounder).compound(
-      paths,
-      [[0, 0], [0, 0], [0, 0]],
-      arbitraryDeadline
-    )
+      // check earnings
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1010)
+    })
+    it('Two investors share interest', async () => {
+      await lpTokenContract.mint(investor0.address, 1000)
+      await lpTokenContract.mint(investor1.address, 1000)
+
+      // investor0 deposit
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(0)
+      expect(await farmBotContract.getFpAmount(1000)).to.equal(1000)
+
+      // investor1 deposit
+      await lpTokenContract.connect(investor1).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor1).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)
+
+      // compound
+      const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        arbitraryDeadline
+      )
+
+      // check earnings
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1005)
+    })
+    it('Early investor earns more', async () => {
+      // investor0 deposit
+      await lpTokenContract.mint(investor0.address, 1000)
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(0)
+      expect(await farmBotContract.getFpAmount(1000)).to.equal(1000)
+
+      // first compound
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        BigNumber.from(Date.now()).div(1000).add(600) // arbitrary
+      )
+
+      // check earnings after first compound
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1010)
+
+      // investor1 deposit
+      await lpTokenContract.mint(investor1.address, 1010)
+      await lpTokenContract.connect(investor1).approve(farmBotContract.address, 1010)
+      await farmBotContract.connect(investor1).deposit(1010)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)  // since FP:LP ratio was 1010 when investor1 deposited
+
+      // second compound
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        BigNumber.from(Date.now()).div(1000).add(600) // arbitrary
+      )
+
+      // check earnings after second compound
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.balanceOf(investor1.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1015)  // since 10 LPs were split between each investor with 1000 FPs, the value of 1000 FPs rose by 5
+    })
+    it('Works when a swap path is longer than 2', async () => {
+      // TODO
+    })
+    it('Works when a reward token is also a staking token', async () => {
+      // TODO
+    })
+    it('Sends correct reserve fee to the reserve', async () => {
+      // TODO
+    })
+    it('Sends correct compounder fee to compounder', async () => {
+      // TODO
+    })
+    it('If rewards tokens left over (due to swap messiness), reinvested next time', async () => {
+      // TODO
+    })
   })
 })
