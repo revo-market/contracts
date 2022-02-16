@@ -304,11 +304,41 @@ describe('Farm bot tests', () => {
     it('Works when a reward token is also a staking token', async () => {
       // TODO
     })
-    it('Sends correct reserve fee to the reserve', async () => {
-      // TODO
-    })
-    it('Sends correct compounder fee to compounder', async () => {
-      // TODO
+    it('Sends correct fees to reserve, compounder', async () => {
+      await lpTokenContract.mint(investor0.address, 1000)
+      expect(await lpTokenContract.balanceOf(investor0.address)).to.equal(1000)  // sanity check
+
+      // invest
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getFpAmount(1000)).to.equal(1000)
+
+      // set fees
+      await feeContract.connect(deployer).setCompounderFee(1)
+      await feeContract.connect(deployer).setReserveFee(2)
+
+      // set rewards
+      await routerContract.setMockLiquidity(100)
+
+      // compound
+      const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        arbitraryDeadline
+      )
+
+      // check earnings
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1097)
+
+      // sanity
+      expect(compounder.address).not.to.be.equal(reserve.address)
+
+      // check fees
+      expect(await lpTokenContract.balanceOf(compounder.address)).to.equal(1)
+      expect(await lpTokenContract.balanceOf(reserve.address)).to.equal(2)
     })
     it('If rewards tokens left over (due to swap messiness), reinvested next time', async () => {
       // TODO
