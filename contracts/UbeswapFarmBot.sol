@@ -231,7 +231,15 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         stakingRewards.stake(_lpAmount);
     }
 
-    // Figure out best-case scenario amount of token we can get and swap
+    /**
+     * Swap a rewards token for a token in the liquidity pool.
+     *
+     * @param _swapPath: path for the swap. Must start with _startToken and end with the desired token
+     * @param _startTokenBudget: amount of _startToken to swap
+     * @param _startToken: token to spend
+     * @param _minAmountOut: minimum amount of the desired token (revert if the swap yields less)
+     * @param _deadline: deadline for the swap
+     */
     function swapForTokenInPool(
         address[] memory _swapPath,
         uint256 _startTokenBudget,
