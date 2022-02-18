@@ -239,7 +239,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         uint256 _minAmountOut,
         uint256 _deadline
     ) private returns (uint256) {
-        if (_swapPath.length >= 2) {
+        if (_swapPath.length >= 2 && _startTokenBudget > 0) {
             _startToken.approve(address(router), _startTokenBudget);
             uint256[] memory _swapResultAmounts = router
                 .swapExactTokensForTokens(
