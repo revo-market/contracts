@@ -340,6 +340,23 @@ describe('Farm bot tests', () => {
       expect(await lpTokenContract.balanceOf(compounder.address)).to.equal(1)
       expect(await lpTokenContract.balanceOf(reserve.address)).to.equal(2)
     })
+    it('handles case where one rewards token is depleted', async () => {
+      await stakingRewardsContract.setAmountEarnedExternal([10, 10, 0])
+      await lpTokenContract.mint(investor0.address, 1000)
+      await lpTokenContract.connect(investor0).approve(farmBotContract.address, 1000)
+      await farmBotContract.connect(investor0).deposit(1000)
+
+      // compound
+      await farmBotContract.connect(compounder).compound(
+        paths,
+        [[10, 10], [10, 10], [10, 10]],
+        BigNumber.from(Date.now()).div(1000).add(600) // arbitrary
+      )
+
+      // check earnings after first compound
+      expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
+      expect(await farmBotContract.getLpAmount(1000)).to.equal(1010)
+    })
     it('If rewards tokens left over (due to swap messiness), reinvested next time', async () => {
       // TODO
     })

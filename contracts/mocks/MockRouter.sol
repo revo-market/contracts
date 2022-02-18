@@ -77,6 +77,7 @@ contract MockRouter is IUniswapV2Router01 {
         address to,
         uint deadline
     ) external override returns (uint[] memory amounts) {
+        require(amountIn > 0, "Cannot swap zero of token");
         MockERC20(path[0]).burn(msg.sender, amountIn);
         amounts = mockAmounts;
         MockERC20(path[path.length - 1]).mint(msg.sender, amounts[amounts.length - 1]);
