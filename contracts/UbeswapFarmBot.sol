@@ -10,11 +10,13 @@ import "./IRevoFees.sol";
 import "./openzeppelin-solidity/contracts/ERC20.sol";
 import "./openzeppelin-solidity/contracts/AccessControl.sol";
 import "./openzeppelin-solidity/contracts/SafeERC20.sol";
+import "./openzeppelin-solidity/contracts/Pausable.sol";
 
-contract UbeswapFarmBot is ERC20, AccessControl {
+contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
     using SafeERC20 for IERC20;
 
     event FeesUpdated(address indexed by, address indexed to);
+    event RouterUpdated(address indexed by, address indexed routerAddress);
     event ReserveUpdated(address indexed by, address indexed reserveAddress);
     event SlippageUpdated(
         address indexed by,
@@ -110,6 +112,8 @@ contract UbeswapFarmBot is ERC20, AccessControl {
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
         emit GrantRole(msg.sender, _owner, DEFAULT_ADMIN_ROLE);
+
+        _giveAllowances();
     }
 
     function grantRole(bytes32 role, address account)
@@ -120,6 +124,14 @@ contract UbeswapFarmBot is ERC20, AccessControl {
     {
         super.grantRole(role, account);
         emit GrantRole(msg.sender, account, role);
+    }
+
+    function updateRouterAddress(address _router)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        router = IUniswapV2Router02(_router);
+        emit RouterUpdated(msg.sender, _router);
     }
 
     function updateReserveAddress(address _reserveAddress)
@@ -167,7 +179,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         }
     }
 
-    function deposit(uint256 _lpAmount) public {
+    function deposit(uint256 _lpAmount) public whenNotPaused {
         bool transferSuccess = stakingToken.transferFrom(
             msg.sender,
             address(this),
@@ -227,7 +239,6 @@ contract UbeswapFarmBot is ERC20, AccessControl {
 
     function investInFarm(uint256 _lpAmount) private {
         require(_lpAmount > 0, "Cannot invest in farm because _lpAmount is 0");
-        stakingToken.approve(address(stakingRewards), _lpAmount);
         stakingRewards.stake(_lpAmount);
     }
 
@@ -248,7 +259,6 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         uint256 _deadline
     ) private returns (uint256) {
         if (_swapPath.length >= 2 && _startTokenBudget > 0) {
-            _startToken.approve(address(router), _startTokenBudget);
             uint256[] memory _swapResultAmounts = router
                 .swapExactTokensForTokens(
                     _startTokenBudget,
@@ -289,9 +299,6 @@ contract UbeswapFarmBot is ERC20, AccessControl {
             );
         }
 
-        // Approve the router to spend the bot's token0/token1
-        stakingToken0.approve(address(router), _totalAmountToken0);
-        stakingToken1.approve(address(router), _totalAmountToken1);
         // Actually add liquidity
         router.addLiquidity(
             address(stakingToken0),
@@ -334,7 +341,7 @@ contract UbeswapFarmBot is ERC20, AccessControl {
         address[][2][] memory _paths,
         uint256[2][] memory _minAmountsOut,
         uint256 _deadline
-    ) public ensure(_deadline) onlyRole(COMPOUNDER_ROLE) {
+    ) public ensure(_deadline) onlyRole(COMPOUNDER_ROLE) whenNotPaused {
         require(
             _paths.length == rewardsTokens.length,
             "Parameter _paths must have length equal to rewardsTokens"
@@ -395,5 +402,40 @@ contract UbeswapFarmBot is ERC20, AccessControl {
             compounderFee,
             reserveFee
         );
+    }
+
+    function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+
+        _removeAllowances();
+    }
+
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+
+        // Set allowances to 0 first to avoid transaction ordering exploit
+        _removeAllowances();
+        _giveAllowances();
+
+        uint256 lpBalance = stakingToken.balanceOf(address(this));
+        investInFarm(lpBalance);
+    }
+
+    function _giveAllowances() internal {
+        stakingToken.approve(address(stakingRewards), type(uint256).max);
+        stakingToken0.safeApprove(address(router), type(uint256).max);
+        stakingToken1.safeApprove(address(router), type(uint256).max);
+        for (uint256 i = 0; i < rewardsTokens.length; i++) {
+            rewardsTokens[i].safeApprove(address(router), type(uint256).max);
+        }
+    }
+
+    function _removeAllowances() internal {
+        stakingToken.approve(address(stakingRewards), 0);
+        stakingToken0.safeApprove(address(router), 0);
+        stakingToken1.safeApprove(address(router), 0);
+        for (uint256 i = 0; i < rewardsTokens.length; i++) {
+            rewardsTokens[i].safeApprove(address(router), 0);
+        }
     }
 }
