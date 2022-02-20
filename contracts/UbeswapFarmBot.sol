@@ -130,7 +130,10 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        // Need to update allowances when changing the router address
+        _removeAllowances();
         router = IUniswapV2Router02(_router);
+        _giveAllowances();
         emit RouterUpdated(msg.sender, _router);
     }
 
@@ -418,7 +421,9 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         _giveAllowances();
 
         uint256 lpBalance = stakingToken.balanceOf(address(this));
-        investInFarm(lpBalance);
+        if (lpBalance > 0) {
+            investInFarm(lpBalance);
+        }
     }
 
     function _giveAllowances() internal {
