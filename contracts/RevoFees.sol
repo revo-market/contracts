@@ -5,9 +5,13 @@ import "./ubeswap-farming/contracts/Owned.sol";
 import "./IRevoFees.sol";
 
 contract RevoFees is Owned, IRevoFees {
+    // compounder fee: a performance fee (taken from farming rewards) to compensate someone who calls 'compound' method
+    //  on a Revo Farm Bot. This is necessary because compounders incur gas costs and help users get compound interest
+    //  (since the 'compound' method re-invests their farming rewards into the farm)
     uint256 public compounderFeeNumerator;
     uint256 public compounderFeeDenominator;
 
+    // reserve fee: a performance fee (taken from farming rewards) sent to Revo reserves, to fund future development
     uint256 public reserveFeeNumerator;
     uint256 public reserveFeeDenominator;
 
@@ -40,6 +44,12 @@ contract RevoFees is Owned, IRevoFees {
         reserveFeeDenominator = _reserveFeeDenominator;
     }
 
+    /*
+     * Check what the bonus will be for calling 'compound' on a Revo Farm Bot.
+     *
+     * In the future, bonuses may be issued to compounders that are not taken as performance fees. (Could be governance
+     *   tokens, or issued from a community fund.) This may help us lower or eliminate the compounder fee.
+     */
     function compounderBonus(TokenAmount memory _interestAccrued)
         external
         pure
@@ -69,10 +79,26 @@ contract RevoFees is Owned, IRevoFees {
         return (_interestAccrued * reserveFeeNumerator) / reserveFeeDenominator;
     }
 
+    /*
+     * Issue the bonus for calling 'compound' on a Revo Farm Bot.
+     */
     function issueCompounderBonus(address recipient) external pure override {
         return; // intentionally does nothing
     }
 
+    /*
+     * Check the fee for withdrawing funds from a Revo Farm Bot.
+     *
+     * Withdrawal fees are used to prevent bad actors from depositing right before 'compound' is called, then withdrawing
+     *   right after and taking some of the rewards. (Withdrawal fee should be >= the interest gained from the last time
+     *   'compound' was called.)
+     *
+     * Takes the interest earned the last time 'compound' was called as a parameter. This makes it possible to have dynamic
+     *   withdrawal fees.
+     *
+     * (Note that there is a maximum fee set in the Farm Bot contract to protect
+     *   users from unreasonably high withdrawal fees.)
+     */
     function withdrawalFee(
         uint256 interestEarnedNumerator,
         uint256 interestEarnedDenominator
