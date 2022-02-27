@@ -81,10 +81,10 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
     //  Note that compounder fees + reserve fees are "performance fees", meaning they are charged only on earnings.
     //  Performance fees are guaranteed to be at most 4%, the current standard, and should be much less.
     IRevoFees public revoFees;
-    uint256 public maxPerformanceFeeNumerator = 40;
-    uint256 public maxPerformanceFeeDenominator = 1000;
-    uint256 public maxWithdrawalFeeNumerator = 25;
-    uint256 public maxWithdrawalFeeDenominator = 10000;
+    uint256 public constant maxPerformanceFeeNumerator = 40;
+    uint256 public constant maxPerformanceFeeDenominator = 1000;
+    uint256 public constant maxWithdrawalFeeNumerator = 25;
+    uint256 public constant maxWithdrawalFeeDenominator = 10000;
 
     address public reserveAddress;
 
