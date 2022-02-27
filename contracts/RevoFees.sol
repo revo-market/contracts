@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "./ubeswap-farming/contracts/Owned.sol";
 import "./IRevoFees.sol";
@@ -14,6 +14,17 @@ contract RevoFees is Owned, IRevoFees {
     // reserve fee: a performance fee (taken from farming rewards) sent to Revo reserves, to fund future development
     uint256 public reserveFeeNumerator;
     uint256 public reserveFeeDenominator;
+
+    event CompounderFeeUpdated(
+        address indexed by,
+        uint256 compounderFeeNumerator,
+        uint256 compounderFeeDenominator
+    );
+    event ReserveFeeUpdated(
+        address indexed by,
+        uint256 reserveFeeNumerator,
+        uint256 reserveFeeDenominator
+    );
 
     constructor(
         address _owner,
@@ -34,6 +45,11 @@ contract RevoFees is Owned, IRevoFees {
     ) external onlyOwner {
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
+        emit CompounderFeeUpdated(
+            msg.sender,
+            _compounderFeeNumerator,
+            _compounderFeeDenominator
+        );
     }
 
     function updateReserveFee(
@@ -42,6 +58,11 @@ contract RevoFees is Owned, IRevoFees {
     ) external onlyOwner {
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
+        emit ReserveFeeUpdated(
+            msg.sender,
+            _reserveFeeNumerator,
+            _reserveFeeDenominator
+        );
     }
 
     /*

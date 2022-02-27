@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "hardhat/console.sol";
 
@@ -112,8 +112,6 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
         emit GrantRole(msg.sender, _owner, DEFAULT_ADMIN_ROLE);
-
-        _giveAllowances();
     }
 
     function grantRole(bytes32 role, address account)
@@ -130,10 +128,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        // Need to update allowances when changing the router address
-        _removeAllowances();
         router = IUniswapV2Router02(_router);
-        _giveAllowances();
         emit RouterUpdated(msg.sender, _router);
     }
 
@@ -141,6 +136,10 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        require(
+            _reserveAddress != address(0),
+            "Cannot set reserve address to 0"
+        );
         reserveAddress = _reserveAddress;
         emit ReserveUpdated(msg.sender, _reserveAddress);
     }
@@ -182,7 +181,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         }
     }
 
-    function deposit(uint256 _lpAmount) public whenNotPaused {
+    function deposit(uint256 _lpAmount) external whenNotPaused {
         bool transferSuccess = stakingToken.transferFrom(
             msg.sender,
             address(this),
@@ -193,11 +192,11 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         uint256 _fpAmount = this.getFpAmount(_lpAmount);
         _mint(msg.sender, _fpAmount);
         lpTotalBalance += _lpAmount;
-        investInFarm(_lpAmount);
+        _investInFarm(_lpAmount);
         emit Deposit(msg.sender, _lpAmount);
     }
 
-    function withdrawAll() public {
+    function withdrawAll() external {
         require(balanceOf(msg.sender) > 0, "Cannot withdraw zero balance");
         uint256 _lpAmount = getLpAmount(balanceOf(msg.sender));
         withdraw(_lpAmount);
@@ -240,8 +239,9 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         emit Withdraw(msg.sender, _lpAmount, _withdrawalFee);
     }
 
-    function investInFarm(uint256 _lpAmount) private {
+    function _investInFarm(uint256 _lpAmount) private {
         require(_lpAmount > 0, "Cannot invest in farm because _lpAmount is 0");
+        stakingToken.approve(address(stakingRewards), _lpAmount);
         stakingRewards.stake(_lpAmount);
     }
 
@@ -254,7 +254,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
      * @param _minAmountOut: minimum amount of the desired token (revert if the swap yields less)
      * @param _deadline: deadline for the swap
      */
-    function swapForTokenInPool(
+    function _swapForTokenInPool(
         address[] memory _swapPath,
         uint256 _startTokenBudget,
         IERC20 _startToken,
@@ -262,6 +262,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         uint256 _deadline
     ) private returns (uint256) {
         if (_swapPath.length >= 2 && _startTokenBudget > 0) {
+            _startToken.safeApprove(address(router), _startTokenBudget);
             uint256[] memory _swapResultAmounts = router
                 .swapExactTokensForTokens(
                     _startTokenBudget,
@@ -276,7 +277,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         }
     }
 
-    function addLiquidity(
+    function _addLiquidity(
         uint256[] memory _tokenBalances,
         address[][2][] memory _paths,
         uint256[2][] memory _minAmountsOut,
@@ -286,14 +287,14 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         uint256 _totalAmountToken1 = 0;
         for (uint256 i = 0; i < _tokenBalances.length; i++) {
             uint256 _halfTokens = _tokenBalances[i] / 2;
-            _totalAmountToken0 += swapForTokenInPool(
+            _totalAmountToken0 += _swapForTokenInPool(
                 _paths[i][0],
                 _halfTokens,
                 rewardsTokens[i],
                 _minAmountsOut[i][0],
                 _deadline
             );
-            _totalAmountToken1 += swapForTokenInPool(
+            _totalAmountToken1 += _swapForTokenInPool(
                 _paths[i][1],
                 _halfTokens,
                 rewardsTokens[i],
@@ -301,6 +302,10 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
                 _deadline
             );
         }
+
+        // Approve the router to spend the bot's token0/token1
+        stakingToken0.safeApprove(address(router), _totalAmountToken0);
+        stakingToken1.safeApprove(address(router), _totalAmountToken1);
 
         // Actually add liquidity
         router.addLiquidity(
@@ -344,7 +349,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         address[][2][] memory _paths,
         uint256[2][] memory _minAmountsOut,
         uint256 _deadline
-    ) public ensure(_deadline) onlyRole(COMPOUNDER_ROLE) whenNotPaused {
+    ) external ensure(_deadline) onlyRole(COMPOUNDER_ROLE) whenNotPaused {
         require(
             _paths.length == rewardsTokens.length,
             "Parameter _paths must have length equal to rewardsTokens"
@@ -362,7 +367,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         }
 
         // Perform swaps and add liquidity
-        addLiquidity(_tokenBalances, _paths, _minAmountsOut, _deadline);
+        _addLiquidity(_tokenBalances, _paths, _minAmountsOut, _deadline);
 
         // send fees to compounder and reserve
         uint256 lpBalance = stakingToken.balanceOf(address(this));
@@ -389,7 +394,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
 
         // reinvest LPs and adjust FP weight
         uint256 lpEarnings = lpBalance - compounderFee - reserveFee;
-        investInFarm(lpEarnings);
+        _investInFarm(lpEarnings);
         lpTotalBalance += lpEarnings;
 
         // update interest rate
@@ -407,40 +412,16 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         );
     }
 
-    function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
-
-        _removeAllowances();
     }
 
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
 
-        // Set allowances to 0 first to avoid transaction ordering exploit
-        _removeAllowances();
-        _giveAllowances();
-
         uint256 lpBalance = stakingToken.balanceOf(address(this));
         if (lpBalance > 0) {
-            investInFarm(lpBalance);
-        }
-    }
-
-    function _giveAllowances() internal {
-        stakingToken.approve(address(stakingRewards), type(uint256).max);
-        stakingToken0.safeApprove(address(router), type(uint256).max);
-        stakingToken1.safeApprove(address(router), type(uint256).max);
-        for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            rewardsTokens[i].safeApprove(address(router), type(uint256).max);
-        }
-    }
-
-    function _removeAllowances() internal {
-        stakingToken.approve(address(stakingRewards), 0);
-        stakingToken0.safeApprove(address(router), 0);
-        stakingToken1.safeApprove(address(router), 0);
-        for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            rewardsTokens[i].safeApprove(address(router), 0);
+            _investInFarm(lpBalance);
         }
     }
 }
