@@ -5,6 +5,7 @@ import "hardhat/console.sol";
 
 import "./IMoolaStakingRewards.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
+import "./ubeswap/contracts/uniswapv2/interfaces/IUbeswapRouter.sol";
 import "./ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
 import "./IRevoFees.sol";
 import "./openzeppelin-solidity/contracts/ERC20.sol";
@@ -16,7 +17,11 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
     using SafeERC20 for IERC20;
 
     event FeesUpdated(address indexed by, address indexed to);
-    event RouterUpdated(address indexed by, address indexed routerAddress);
+    event LiquidityRouterUpdated(
+        address indexed by,
+        address indexed routerAddress
+    );
+    event SwapRouterUpdated(address indexed by, address indexed routerAddress);
     event ReserveUpdated(address indexed by, address indexed reserveAddress);
     event SlippageUpdated(
         address indexed by,
@@ -58,7 +63,11 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
     IERC20 public stakingToken0; // LP token0
     IERC20 public stakingToken1; // LP token1
 
-    IUniswapV2Router02 public router; // Router address
+    // The router that handles swaps may not be capable of also minting liquidity; in this case, we need
+    // dedicated routers for each function. In particular, this is true when swapping Moola mTokens using
+    // Ubeswap's Moola router.
+    IUbeswapRouter public swapRouter; // address to use for router that handles swaps
+    IUniswapV2Router02 public liquidityRouter; // address to use for router that handles minting liquidity
 
     // Acceptable slippage when minting LP; can be updated by admin
     uint256 public slippageNumerator = 99;
@@ -90,7 +99,8 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         address _stakingRewards,
         address _stakingToken,
         address _revoFees,
-        address _router,
+        address _swapRouter,
+        address _liquidityRouter,
         address[] memory _rewardsTokens,
         string memory _symbol
     ) ERC20("Revo FP Token", _symbol) {
@@ -108,7 +118,8 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
 
         reserveAddress = _reserveAddress;
 
-        router = IUniswapV2Router02(_router);
+        swapRouter = IUbeswapRouter(_swapRouter);
+        liquidityRouter = IUniswapV2Router02(_liquidityRouter);
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
         emit GrantRole(msg.sender, _owner, DEFAULT_ADMIN_ROLE);
@@ -124,12 +135,20 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         emit GrantRole(msg.sender, account, role);
     }
 
-    function updateRouterAddress(address _router)
+    function updateLiquidityRouterAddress(address _liquidityRouter)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        router = IUniswapV2Router02(_router);
-        emit RouterUpdated(msg.sender, _router);
+        liquidityRouter = IUniswapV2Router02(_liquidityRouter);
+        emit LiquidityRouterUpdated(msg.sender, _liquidityRouter);
+    }
+
+    function updateSwapRouterAddress(address _swapRouter)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        swapRouter = IUbeswapRouter(_swapRouter);
+        emit SwapRouterUpdated(msg.sender, _swapRouter);
     }
 
     function updateReserveAddress(address _reserveAddress)
@@ -262,8 +281,11 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         uint256 _deadline
     ) private returns (uint256) {
         if (_swapPath.length >= 2 && _startTokenBudget > 0) {
-            _startToken.safeIncreaseAllowance(address(router), _startTokenBudget);
-            uint256[] memory _swapResultAmounts = router
+            _startToken.safeIncreaseAllowance(
+                address(swapRouter),
+                _startTokenBudget
+            );
+            uint256[] memory _swapResultAmounts = swapRouter
                 .swapExactTokensForTokens(
                     _startTokenBudget,
                     _minAmountOut,
@@ -303,12 +325,12 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
             );
         }
 
-        // Approve the router to spend the bot's token0/token1
-        stakingToken0.approve(address(router), _totalAmountToken0);
-        stakingToken1.approve(address(router), _totalAmountToken1);
+        // Approve the liquidity router to spend the bot's token0/token1
+        stakingToken0.approve(address(liquidityRouter), _totalAmountToken0);
+        stakingToken1.approve(address(liquidityRouter), _totalAmountToken1);
 
         // Actually add liquidity
-        router.addLiquidity(
+        liquidityRouter.addLiquidity(
             address(stakingToken0),
             address(stakingToken1),
             _totalAmountToken0,
