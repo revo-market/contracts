@@ -262,7 +262,10 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         uint256 _deadline
     ) private returns (uint256) {
         if (_swapPath.length >= 2 && _startTokenBudget > 0) {
-            _startToken.safeIncreaseAllowance(address(router), _startTokenBudget);
+            _startToken.safeIncreaseAllowance(
+                address(router),
+                _startTokenBudget
+            );
             uint256[] memory _swapResultAmounts = router
                 .swapExactTokensForTokens(
                     _startTokenBudget,
