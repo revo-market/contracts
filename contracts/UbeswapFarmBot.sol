@@ -262,7 +262,7 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         uint256 _deadline
     ) private returns (uint256) {
         if (_swapPath.length >= 2 && _startTokenBudget > 0) {
-            _startToken.safeApprove(address(router), _startTokenBudget);
+            _startToken.safeIncreaseAllowance(address(router), _startTokenBudget);
             uint256[] memory _swapResultAmounts = router
                 .swapExactTokensForTokens(
                     _startTokenBudget,
@@ -304,8 +304,8 @@ contract UbeswapFarmBot is ERC20, AccessControl, Pausable {
         }
 
         // Approve the router to spend the bot's token0/token1
-        stakingToken0.safeApprove(address(router), _totalAmountToken0);
-        stakingToken1.safeApprove(address(router), _totalAmountToken1);
+        stakingToken0.approve(address(router), _totalAmountToken0);
+        stakingToken1.approve(address(router), _totalAmountToken1);
 
         // Actually add liquidity
         router.addLiquidity(
