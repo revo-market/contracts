@@ -39,3 +39,5 @@ const main: DeployerFn<{}> = async ({
     UbeswapFarmBot: ubeswapFarmBot.address,
   }
 }
+
+export default main
