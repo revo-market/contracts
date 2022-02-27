@@ -9,8 +9,9 @@ const main: DeployerFn<{}> = async ({
   const RESERVE_ADDRESS = "0x99649aF776ff1b024F12e8Fe9dfA59A6c0b4bD9C" // Multi-sig owner
   const STAKING_REWARDS_ADDRESS = "0x2Ca16986bEA18D562D26354b4Ff4C504F14fB01c" // MoolaStakingRewards address
   const STAKING_TOKEN_ADDRESS = "0xf94fea0c87d2b357dc72b743b45a8cb682b0716e" // mcUSD-mcEUR LP address
-  const REVO_FEES_ADDRESS = "0xa8481Db4C3C7B4F3ce7E28076bD3d7E877f60B62" // RevoFees address
-  const ROUTER_ADDRESS = "0x7D28570135A2B1930F331c507F65039D4937f66c" // UbeswapMoolaRouter address
+  const REVO_FEES_ADDRESS = "0xcfc4ae9bd3a68d5acca5f287dda070ad9532f9e8" // RevoFees address
+  const SWAP_ROUTER_ADDRESS = "0x7D28570135A2B1930F331c507F65039D4937f66c" // UbeswapMoolaRouter address
+  const LIQUIDITY_ROUTER_ADDRESS = "0xe3d8bd6aed4f159bc8000a9cd47cffdb95f96121" // UniswapV2Router02 address
   const REWARDS_TOKENS = [
     "0x471EcE3750Da237f93B8E339c536989b8978a438", // CELO
     "0x00be915b9dcf56a3cbe739d9b9c202ca692409ec", // UBE
@@ -27,7 +28,8 @@ const main: DeployerFn<{}> = async ({
       STAKING_REWARDS_ADDRESS,
       STAKING_TOKEN_ADDRESS,
       REVO_FEES_ADDRESS,
-      ROUTER_ADDRESS,
+      SWAP_ROUTER_ADDRESS,
+      LIQUIDITY_ROUTER_ADDRESS,
       REWARDS_TOKENS,
       SYMBOL
     ]
@@ -37,5 +39,3 @@ const main: DeployerFn<{}> = async ({
     UbeswapFarmBot: ubeswapFarmBot.address,
   }
 }
-
-export default main
