@@ -18,12 +18,16 @@ Note that after making changes to contracts, you will need to compile the contra
 then possibly update the deploy script before deploying (in particular, this will be necessary if you updated arguments
 for the constructor for some contract in the deploy script).
 
-## E2e tests
-To run an e2e test script, first prepare two wallets on Alfajores according to the instructions in
-`scripts/check-farm-bot-alfajores.ts` (at time of writing, this meant getting LP tokens for each one). Then you can run
-the test script with `ts-node` as follows:
+## Helper scripts
+There are some helper scripts for interacting with the Farm Bot contract in the `scripts` directory.
+- deposit: deposit LP into a farm bot
+- grant-compounder: grant the compounder role (assuming you are the farm bot admin)
+- withdraw: withdraw LP from a farm bot
+
+The docstring in each script file should help you prepare to run each one. Here's an example of running the `deposit` 
+script from the CLI:
 ```
-ALFAJORES_WALLET_PRIVATE_KEY=<fill this in> ALFAJORES_WALLET_PRIVATE_KEY_2=<fill this in too> node --require ts-node/register /Users/charlie/code/revo/contracts/./scripts/check-farm-bot-alfajores.ts
+PRIVATE_KEY=<fill this in> LP_AMOUNT=<fill this in> node --require ts-node/register <fill in path to project>/scripts/deposit.ts
 ```
 or with regular node by first building with `yarn build` and then running the compiled JS file.
 
