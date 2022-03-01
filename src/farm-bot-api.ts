@@ -143,6 +143,7 @@ export async function compound(kit: ContractKit, deadline?: BigNumber) {
 }
 
 export async function withdraw(kit: ContractKit, amount: string) {
+  console.log(`Withdrawing ${amount} RFP for ${kit.web3.eth.defaultAccount} from farm bot at ${FARM_BOT_ADDRESS}`)
   const farmBotContract = getFarmBotContract(kit)
   assert.ok(kit.web3.eth.defaultAccount)
   return farmBotContract.methods.withdraw(amount).send({
