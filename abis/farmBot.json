@@ -8,23 +8,43 @@
     },
     {
       "internalType": "address",
+      "name": "_reserveAddress",
+      "type": "address"
+    },
+    {
+      "internalType": "address",
       "name": "_stakingRewards",
       "type": "address"
     },
     {
       "internalType": "address",
-      "name": "_router",
+      "name": "_stakingToken",
+      "type": "address"
+    },
+    {
+      "internalType": "address",
+      "name": "_revoFees",
+      "type": "address"
+    },
+    {
+      "internalType": "address",
+      "name": "_swapRouter",
+      "type": "address"
+    },
+    {
+      "internalType": "address",
+      "name": "_liquidityRouter",
       "type": "address"
     },
     {
       "internalType": "address[]",
-      "name": "_path0",
+      "name": "_rewardsTokens",
       "type": "address[]"
     },
     {
-      "internalType": "address[]",
-      "name": "_path1",
-      "type": "address[]"
+      "internalType": "string",
+      "name": "_symbol",
+      "type": "string"
     }
   ],
   "stateMutability": "nonpayable",
@@ -59,19 +79,119 @@
   "anonymous": false,
   "inputs": [
     {
-      "indexed": false,
+      "indexed": true,
       "internalType": "address",
-      "name": "oldOwner",
+      "name": "by",
       "type": "address"
     },
     {
       "indexed": false,
+      "internalType": "uint256",
+      "name": "lpStaked",
+      "type": "uint256"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "newLPTotalBalance",
+      "type": "uint256"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "compounderFeeAmount",
+      "type": "uint256"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "reserveFeeAmount",
+      "type": "uint256"
+    }
+  ],
+  "name": "Compound",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
       "internalType": "address",
-      "name": "newOwner",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "lpAmount",
+      "type": "uint256"
+    }
+  ],
+  "name": "Deposit",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "to",
       "type": "address"
     }
   ],
-  "name": "OwnerChanged",
+  "name": "FeesUpdated",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "newRoleRecipient",
+      "type": "address"
+    },
+    {
+      "indexed": false,
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    }
+  ],
+  "name": "GrantRole",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "routerAddress",
+      "type": "address"
+    }
+  ],
+  "name": "LiquidityRouterUpdated",
   "type": "event"
 },
 {
@@ -80,11 +200,149 @@
     {
       "indexed": false,
       "internalType": "address",
-      "name": "newOwner",
+      "name": "account",
       "type": "address"
     }
   ],
-  "name": "OwnerNominated",
+  "name": "Paused",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "reserveAddress",
+      "type": "address"
+    }
+  ],
+  "name": "ReserveUpdated",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    },
+    {
+      "indexed": true,
+      "internalType": "bytes32",
+      "name": "previousAdminRole",
+      "type": "bytes32"
+    },
+    {
+      "indexed": true,
+      "internalType": "bytes32",
+      "name": "newAdminRole",
+      "type": "bytes32"
+    }
+  ],
+  "name": "RoleAdminChanged",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "account",
+      "type": "address"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }
+  ],
+  "name": "RoleGranted",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "account",
+      "type": "address"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "sender",
+      "type": "address"
+    }
+  ],
+  "name": "RoleRevoked",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "numerator",
+      "type": "uint256"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "denominator",
+      "type": "uint256"
+    }
+  ],
+  "name": "SlippageUpdated",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "routerAddress",
+      "type": "address"
+    }
+  ],
+  "name": "SwapRouterUpdated",
   "type": "event"
 },
 {
@@ -113,22 +371,79 @@
   "type": "event"
 },
 {
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": false,
+      "internalType": "address",
+      "name": "account",
+      "type": "address"
+    }
+  ],
+  "name": "Unpaused",
+  "type": "event"
+},
+{
+  "anonymous": false,
+  "inputs": [
+    {
+      "indexed": true,
+      "internalType": "address",
+      "name": "by",
+      "type": "address"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "lpAmount",
+      "type": "uint256"
+    },
+    {
+      "indexed": false,
+      "internalType": "uint256",
+      "name": "fee",
+      "type": "uint256"
+    }
+  ],
+  "name": "Withdraw",
+  "type": "event"
+},
+{
   "inputs": [],
-  "name": "acceptOwnership",
-  "outputs": [],
-  "stateMutability": "nonpayable",
+  "name": "COMPOUNDER_ROLE",
+  "outputs": [
+    {
+      "internalType": "bytes32",
+      "name": "",
+      "type": "bytes32"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "DEFAULT_ADMIN_ROLE",
+  "outputs": [
+    {
+      "internalType": "bytes32",
+      "name": "",
+      "type": "bytes32"
+    }
+  ],
+  "stateMutability": "view",
   "type": "function"
 },
 {
   "inputs": [
     {
       "internalType": "address",
-      "name": "",
+      "name": "owner",
       "type": "address"
     },
     {
       "internalType": "address",
-      "name": "",
+      "name": "spender",
       "type": "address"
     }
   ],
@@ -152,7 +467,7 @@
     },
     {
       "internalType": "uint256",
-      "name": "value",
+      "name": "amount",
       "type": "uint256"
     }
   ],
@@ -171,7 +486,7 @@
   "inputs": [
     {
       "internalType": "address",
-      "name": "",
+      "name": "account",
       "type": "address"
     }
   ],
@@ -189,12 +504,22 @@
 {
   "inputs": [
     {
+      "internalType": "address[][2][]",
+      "name": "_paths",
+      "type": "address[][2][]"
+    },
+    {
+      "internalType": "uint256[2][]",
+      "name": "_minAmountsOut",
+      "type": "uint256[2][]"
+    },
+    {
       "internalType": "uint256",
-      "name": "deadline",
+      "name": "_deadline",
       "type": "uint256"
     }
   ],
-  "name": "claimRewards",
+  "name": "compound",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"
@@ -215,6 +540,30 @@
 {
   "inputs": [
     {
+      "internalType": "address",
+      "name": "spender",
+      "type": "address"
+    },
+    {
+      "internalType": "uint256",
+      "name": "subtractedValue",
+      "type": "uint256"
+    }
+  ],
+  "name": "decreaseAllowance",
+  "outputs": [
+    {
+      "internalType": "bool",
+      "name": "",
+      "type": "bool"
+    }
+  ],
+  "stateMutability": "nonpayable",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
       "internalType": "uint256",
       "name": "_lpAmount",
       "type": "uint256"
@@ -223,32 +572,6 @@
   "name": "deposit",
   "outputs": [],
   "stateMutability": "nonpayable",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "feeDenominator",
-  "outputs": [
-    {
-      "internalType": "uint256",
-      "name": "",
-      "type": "uint256"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "feeNumerator",
-  "outputs": [
-    {
-      "internalType": "uint256",
-      "name": "",
-      "type": "uint256"
-    }
-  ],
-  "stateMutability": "view",
   "type": "function"
 },
 {
@@ -290,8 +613,184 @@
   "type": "function"
 },
 {
+  "inputs": [
+    {
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    }
+  ],
+  "name": "getRoleAdmin",
+  "outputs": [
+    {
+      "internalType": "bytes32",
+      "name": "",
+      "type": "bytes32"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    },
+    {
+      "internalType": "address",
+      "name": "account",
+      "type": "address"
+    }
+  ],
+  "name": "grantRole",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    },
+    {
+      "internalType": "address",
+      "name": "account",
+      "type": "address"
+    }
+  ],
+  "name": "hasRole",
+  "outputs": [
+    {
+      "internalType": "bool",
+      "name": "",
+      "type": "bool"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "address",
+      "name": "spender",
+      "type": "address"
+    },
+    {
+      "internalType": "uint256",
+      "name": "addedValue",
+      "type": "uint256"
+    }
+  ],
+  "name": "increaseAllowance",
+  "outputs": [
+    {
+      "internalType": "bool",
+      "name": "",
+      "type": "bool"
+    }
+  ],
+  "stateMutability": "nonpayable",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "interestEarnedDenominator",
+  "outputs": [
+    {
+      "internalType": "uint256",
+      "name": "",
+      "type": "uint256"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "interestEarnedNumerator",
+  "outputs": [
+    {
+      "internalType": "uint256",
+      "name": "",
+      "type": "uint256"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "liquidityRouter",
+  "outputs": [
+    {
+      "internalType": "contract IUniswapV2Router02",
+      "name": "",
+      "type": "address"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
   "inputs": [],
   "name": "lpTotalBalance",
+  "outputs": [
+    {
+      "internalType": "uint256",
+      "name": "",
+      "type": "uint256"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "maxPerformanceFeeDenominator",
+  "outputs": [
+    {
+      "internalType": "uint256",
+      "name": "",
+      "type": "uint256"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "maxPerformanceFeeNumerator",
+  "outputs": [
+    {
+      "internalType": "uint256",
+      "name": "",
+      "type": "uint256"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "maxWithdrawalFeeDenominator",
+  "outputs": [
+    {
+      "internalType": "uint256",
+      "name": "",
+      "type": "uint256"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "maxWithdrawalFeeNumerator",
   "outputs": [
     {
       "internalType": "uint256",
@@ -316,21 +815,46 @@
   "type": "function"
 },
 {
-  "inputs": [
-    {
-      "internalType": "address",
-      "name": "_owner",
-      "type": "address"
-    }
-  ],
-  "name": "nominateNewOwner",
+  "inputs": [],
+  "name": "pause",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"
 },
 {
   "inputs": [],
-  "name": "nominatedOwner",
+  "name": "paused",
+  "outputs": [
+    {
+      "internalType": "bool",
+      "name": "",
+      "type": "bool"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    },
+    {
+      "internalType": "address",
+      "name": "account",
+      "type": "address"
+    }
+  ],
+  "name": "renounceRole",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "reserveAddress",
   "outputs": [
     {
       "internalType": "address",
@@ -343,10 +867,10 @@
 },
 {
   "inputs": [],
-  "name": "owner",
+  "name": "revoFees",
   "outputs": [
     {
-      "internalType": "address",
+      "internalType": "contract IRevoFees",
       "name": "",
       "type": "address"
     }
@@ -357,20 +881,19 @@
 {
   "inputs": [
     {
-      "internalType": "uint256",
-      "name": "",
-      "type": "uint256"
-    }
-  ],
-  "name": "path0",
-  "outputs": [
+      "internalType": "bytes32",
+      "name": "role",
+      "type": "bytes32"
+    },
     {
       "internalType": "address",
-      "name": "",
+      "name": "account",
       "type": "address"
     }
   ],
-  "stateMutability": "view",
+  "name": "revokeRole",
+  "outputs": [],
+  "stateMutability": "nonpayable",
   "type": "function"
 },
 {
@@ -381,36 +904,10 @@
       "type": "uint256"
     }
   ],
-  "name": "path1",
-  "outputs": [
-    {
-      "internalType": "address",
-      "name": "",
-      "type": "address"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "rewardsToken",
+  "name": "rewardsTokens",
   "outputs": [
     {
       "internalType": "contract IERC20",
-      "name": "",
-      "type": "address"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "router",
-  "outputs": [
-    {
-      "internalType": "contract IUniswapV2Router02",
       "name": "",
       "type": "address"
     }
@@ -449,7 +946,7 @@
   "name": "stakingRewards",
   "outputs": [
     {
-      "internalType": "contract StakingRewards",
+      "internalType": "contract IMoolaStakingRewards",
       "name": "",
       "type": "address"
     }
@@ -497,6 +994,38 @@
   "type": "function"
 },
 {
+  "inputs": [
+    {
+      "internalType": "bytes4",
+      "name": "interfaceId",
+      "type": "bytes4"
+    }
+  ],
+  "name": "supportsInterface",
+  "outputs": [
+    {
+      "internalType": "bool",
+      "name": "",
+      "type": "bool"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
+  "inputs": [],
+  "name": "swapRouter",
+  "outputs": [
+    {
+      "internalType": "contract IUbeswapRouter",
+      "name": "",
+      "type": "address"
+    }
+  ],
+  "stateMutability": "view",
+  "type": "function"
+},
+{
   "inputs": [],
   "name": "symbol",
   "outputs": [
@@ -526,12 +1055,12 @@
   "inputs": [
     {
       "internalType": "address",
-      "name": "to",
+      "name": "recipient",
       "type": "address"
     },
     {
       "internalType": "uint256",
-      "name": "value",
+      "name": "amount",
       "type": "uint256"
     }
   ],
@@ -550,17 +1079,17 @@
   "inputs": [
     {
       "internalType": "address",
-      "name": "from",
+      "name": "sender",
       "type": "address"
     },
     {
       "internalType": "address",
-      "name": "to",
+      "name": "recipient",
       "type": "address"
     },
     {
       "internalType": "uint256",
-      "name": "value",
+      "name": "amount",
       "type": "uint256"
     }
   ],
@@ -576,19 +1105,8 @@
   "type": "function"
 },
 {
-  "inputs": [
-    {
-      "internalType": "uint256",
-      "name": "_feeNumerator",
-      "type": "uint256"
-    },
-    {
-      "internalType": "uint256",
-      "name": "_feeDenominator",
-      "type": "uint256"
-    }
-  ],
-  "name": "updateFee",
+  "inputs": [],
+  "name": "unpause",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"
@@ -596,17 +1114,38 @@
 {
   "inputs": [
     {
-      "internalType": "address[]",
-      "name": "_path0",
-      "type": "address[]"
-    },
-    {
-      "internalType": "address[]",
-      "name": "_path1",
-      "type": "address[]"
+      "internalType": "address",
+      "name": "_revoFees",
+      "type": "address"
     }
   ],
-  "name": "updatePaths",
+  "name": "updateFees",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "address",
+      "name": "_liquidityRouter",
+      "type": "address"
+    }
+  ],
+  "name": "updateLiquidityRouterAddress",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "address",
+      "name": "_reserveAddress",
+      "type": "address"
+    }
+  ],
+  "name": "updateReserveAddress",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"
@@ -625,6 +1164,19 @@
     }
   ],
   "name": "updateSlippage",
+  "outputs": [],
+  "stateMutability": "nonpayable",
+  "type": "function"
+},
+{
+  "inputs": [
+    {
+      "internalType": "address",
+      "name": "_swapRouter",
+      "type": "address"
+    }
+  ],
+  "name": "updateSwapRouterAddress",
   "outputs": [],
   "stateMutability": "nonpayable",
   "type": "function"
