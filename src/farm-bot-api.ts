@@ -34,6 +34,7 @@ export interface FarmBotContract {
     stakingRewards: () => Call<void, string>
     COMPOUNDER_ROLE: () => Call<void, string>
   }
+  getPastEvents: (type: 'allEvents' | 'Deposit', range: {fromBlock: string, toBlock: string}) => Promise<any[]>
 }
 
 /**
