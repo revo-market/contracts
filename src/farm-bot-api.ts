@@ -27,6 +27,7 @@ export interface FarmBotContract {
   methods: {
     deposit: (amount: string) => Transaction
     withdraw: (amount: string) => Transaction
+    withdrawAll: () => Transaction
     compound: (paths: string[][][], minAmountsOut: number[][], deadline: BigNumber) => Transaction
     grantRole: (role: string, account: string) => Transaction
 
@@ -147,6 +148,17 @@ export async function withdraw(kit: ContractKit, amount: string) {
   const farmBotContract = getFarmBotContract(kit)
   assert.ok(kit.web3.eth.defaultAccount)
   return farmBotContract.methods.withdraw(amount).send({
+    from: kit.web3.eth.defaultAccount,
+    gas: 1076506,
+    gasPrice: 1000000000,
+  })
+}
+
+export async function withdrawAll(kit: ContractKit) {
+  console.log(`Withdrawing all RFP for ${kit.web3.eth.defaultAccount} from farm bot at ${FARM_BOT_ADDRESS}`)
+  const farmBotContract = getFarmBotContract(kit)
+  assert.ok(kit.web3.eth.defaultAccount)
+  return farmBotContract.methods.withdrawAll().send({
     from: kit.web3.eth.defaultAccount,
     gas: 1076506,
     gasPrice: 1000000000,
