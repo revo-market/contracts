@@ -7,9 +7,16 @@ import "../library/MoolaStakingRewards.sol";
 import "../ubeswap-farming/interfaces/IMoolaStakingRewards.sol";
 import "./common/RevoUniswapStakingTokenStrategy.sol";
 
-
+/**
+ * RevoUbeswapFarmBot is a farmbot:
+ *   * that runs on top of a MoolaStakingRewards farm
+ *   * whose stakingToken is UniswapPair ("LP")
+ *   * that acquires LP constintuent tokens through swaps on a UniswapRouter
+ *   * that mints LP from constituent tokens through a UniswapRouter
+ *
+ * This farmbot is suitable for use on top of a handful of Ubeswap yield farming positions.
+ **/
 contract RevoUbeswapFarmBot is RevoUniswapStakingTokenStrategy {
-
     IMoolaStakingRewards public stakingRewards;
 
     constructor(
