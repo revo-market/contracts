@@ -37,9 +37,6 @@ library UniswapRouter {
         }
     }
 
-    /**
-     * Swaps
-     **/
     function swapTokensForEqualAmounts(
         IUniswapV2Router02SwapOnly router,
         uint256[] memory tokenBalances,
