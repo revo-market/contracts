@@ -3,7 +3,7 @@
 pragma solidity ^0.8.3;
 
 /// @notice Swaps tokens
-interface IUbeswapRouter {
+interface IUniswapV2Router02SwapOnly {
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256 amountOutMin,
