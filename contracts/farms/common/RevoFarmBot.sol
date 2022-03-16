@@ -3,19 +3,21 @@ pragma solidity 0.8.4;
 
 import "hardhat/console.sol";
 
-import "./openzeppelin-solidity/contracts/ERC20.sol";
-import "./openzeppelin-solidity/contracts/AccessControl.sol";
-import "./openzeppelin-solidity/contracts/SafeERC20.sol";
-import "./openzeppelin-solidity/contracts/Pausable.sol";
+import "../../openzeppelin-solidity/contracts/ERC20.sol";
+import "../../openzeppelin-solidity/contracts/AccessControl.sol";
+import "../../openzeppelin-solidity/contracts/SafeERC20.sol";
+import "../../openzeppelin-solidity/contracts/Pausable.sol";
+import "../../fees/interfaces/IRevoFees.sol";
 
 /**
  * RevoFarmBot is an abstract base class that can be used to implement Revo farm bots on top
  * of arbitrary sources of yield. These sources of yield come from staking some ERC20 token
  * (the "staking token") into a contract.
  *
- * Minimally, subclasses must implement a _deposit and _withdraw method that deposit and
- * withdraw an amount of the staked token into the "farm". This will result in a RevoFarmBot
- * that does not auto-compound yield; it acts only as "storage" for a user's staking token.
+ * Minimally, subclasses must implement the _deposit, _withdraw, and _claimRewards methods that
+ * deposit/withdraw an amount of the staked token into the "farm", and claim rewards. This will
+ * result in a RevoFarmBot that does not auto-compound yield; it acts only as "storage" for a
+ * user's staking token.
  *
  * Notably, this class does not contain a virtual "compound" function; this is because depending
  * on the implementation, a function repsonsible for compounding the farm bot's staked position may
@@ -24,6 +26,7 @@ import "./openzeppelin-solidity/contracts/Pausable.sol";
  * This class also does not make any assumptions about how yield rewards are converted back into
  * the staking token. For example, this may require a series of swaps and minting a liquidity token ("LP"),
  * or for a single-staking source of yield that issues the staking token itself as a reward, nothing at all.
+ * Since swapping is a common scenario however, this class contains tools for controlling slippage tolerance.
  *
  * For convenience and ease of naming, the staking token is referred to as "LP" throughout the class,
  * although in reality, it may not represent an actual liquidity token.
@@ -32,11 +35,6 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
     using SafeERC20 for IERC20;
 
     event FeesUpdated(address indexed by, address indexed to);
-    event LiquidityRouterUpdated(
-        address indexed by,
-        address indexed routerAddress
-    );
-    event SwapRouterUpdated(address indexed by, address indexed routerAddress);
     event ReserveUpdated(address indexed by, address indexed reserveAddress);
     event SlippageUpdated(
         address indexed by,
@@ -126,32 +124,6 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
     {
         super.grantRole(role, account);
         emit GrantRole(msg.sender, account, role);
-    }
-
-    function grantRole(bytes32 role, address account)
-        public
-        virtual
-        override
-        onlyRole(getRoleAdmin(role))
-    {
-        super.grantRole(role, account);
-        emit GrantRole(msg.sender, account, role);
-    }
-
-    function updateLiquidityRouterAddress(address _liquidityRouter)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        liquidityRouter = IUniswapV2Router02(_liquidityRouter);
-        emit LiquidityRouterUpdated(msg.sender, _liquidityRouter);
-    }
-
-    function updateSwapRouterAddress(address _swapRouter)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        swapRouter = IUbeswapRouter(_swapRouter);
-        emit SwapRouterUpdated(msg.sender, _swapRouter);
     }
 
     function updateReserveAddress(address _reserveAddress)
@@ -262,16 +234,16 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
     }
 
     // Abstract method for depositing LP into a farm
-    function _deposit(uint256 _lpAmount) internal virtual whenNotPaused;
+    function _deposit(uint256 _lpAmount) internal virtual;
 
     // Abstract method for withdrawing LP from a farm
     function _withdraw(uint256 _lpAmount) internal virtual;
 
     // Abstract method for claim rewards from a farm
-    function _claimRewards() private virtual whenNotPaused;
+    function _claimRewards() internal virtual;
 
     // Convenience method for sublcasses
-    function investAllAndSendFees() private whenNotPaused {
+    function investAllAndSendFees() internal whenNotPaused {
         // send fees to compounder and reserve
         uint256 lpBalance = stakingToken.balanceOf(address(this));
         uint256 compounderFee = revoFees.compounderFee(lpBalance);
@@ -315,7 +287,7 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
         );
     }
 
-    function getRewardsTokensBalances() private returns (uint256[]) {
+    function getRewardsTokensBalances() internal returns (uint256[] memory) {
         uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
             _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
@@ -332,7 +304,7 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
 
         uint256 lpBalance = stakingToken.balanceOf(address(this));
         if (lpBalance > 0) {
-            _investInFarm(lpBalance);
+            _deposit(lpBalance);
         }
     }
 }
