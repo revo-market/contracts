@@ -239,7 +239,7 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
     // Abstract method for withdrawing LP from a farm
     function _withdraw(uint256 _lpAmount) internal virtual;
 
-    // Abstract method for claim rewards from a farm
+    // Abstract method for claiming rewards from a farm
     function _claimRewards() internal virtual;
 
     // Convenience method for sublcasses
