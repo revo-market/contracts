@@ -7,7 +7,7 @@ import "../openzeppelin-solidity/contracts/ERC20.sol";
 import "../ubeswap-farming/interfaces/IMoolaStakingRewards.sol";
 import "./common/RevoUniswapStakingTokenStrategy.sol";
 
-contract UbeswapFarmBot is RevoUniswapStakingTokenStrategy {
+contract RevoUbeswapFarmBot is RevoUniswapStakingTokenStrategy {
     using SafeERC20 for IERC20;
 
     IMoolaStakingRewards public stakingRewards;
