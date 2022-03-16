@@ -3,12 +3,12 @@ pragma solidity 0.8.4;
 
 import "hardhat/console.sol";
 
-import "../openzeppelin-solidity/contracts/ERC20.sol";
+import "../library/MoolaStakingRewards.sol";
 import "../ubeswap-farming/interfaces/IMoolaStakingRewards.sol";
 import "./common/RevoUniswapStakingTokenStrategy.sol";
 
+
 contract RevoUbeswapFarmBot is RevoUniswapStakingTokenStrategy {
-    using SafeERC20 for IERC20;
 
     IMoolaStakingRewards public stakingRewards;
 
@@ -38,16 +38,14 @@ contract RevoUbeswapFarmBot is RevoUniswapStakingTokenStrategy {
     }
 
     function _deposit(uint256 _lpAmount) internal override whenNotPaused {
-        require(_lpAmount > 0, "Cannot invest in farm because _lpAmount is 0");
-        stakingToken.safeApprove(address(stakingRewards), _lpAmount);
-        stakingRewards.stake(_lpAmount);
+        MoolaStakingRewards.deposit(stakingRewards, stakingToken, _lpAmount);
     }
 
     function _withdraw(uint256 _lpAmount) internal override {
-        stakingRewards.withdraw(_lpAmount);
+        MoolaStakingRewards.withdraw(stakingRewards, _lpAmount);
     }
 
     function _claimRewards() internal override whenNotPaused {
-        stakingRewards.getReward();
+        MoolaStakingRewards.claimRewards(stakingRewards);
     }
 }
