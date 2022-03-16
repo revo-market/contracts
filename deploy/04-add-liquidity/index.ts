@@ -3,21 +3,19 @@ import {
   UbeswapFarmBot__factory,
   ERC20__factory
 } from "../../typechain"
-import { ethers } from "ethers"
+import ethers from "ethers"
 
 const main: DeployerFn<{}> = async ({
   deployer,
 }) => {
 
-  const FARM_ADDRESS = "0xCB34fbfC3b9a73bc04D2eb43B62532c7918d9E81"
+  const FARM_ADDRESS = "0xc6686060A1BFa583566Ebca400A2C8771b20Cb8C"
   const STAKING_TOKEN_ADDRESS = "0xf94fea0c87d2b357dc72b743b45a8cb682b0716e" // mcUSD-mcEUR LP address
   const COMPOUNDER_ADDRESS = "0x642abB1237009956BB67d0B174337D76F0455EDd"
   //const ROUTER_ADDRESS = "0xE3D8bd6Aed4F159bc8000a9cD47CffDb95F96121" // Ubeswap Router address
 
   // Get current LP balance
   const lpBalance = await ERC20__factory.connect(STAKING_TOKEN_ADDRESS, deployer).balanceOf(COMPOUNDER_ADDRESS)
-
-  console.log(lpBalance.toString())
 
   if (lpBalance.gt(ethers.BigNumber.from(0))) {
     // Approve farm to spend it
