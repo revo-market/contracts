@@ -10,13 +10,13 @@ import "../../openzeppelin-solidity/contracts/Pausable.sol";
 import "../../fees/interfaces/IRevoFees.sol";
 
 /**
- * RevoFarmBot is an abstract base class that can be used to implement Revo farm bots on top
+ * StakingTokenHolder is an abstract base class that can be used to implement Revo farm bots on top
  * of arbitrary sources of yield. These sources of yield come from staking some ERC20 token
  * (the "staking token") into a contract.
  *
- * Minimally, subclasses must implement the _deposit, _withdraw, and _claimRewards methods that
- * deposit/withdraw an amount of the staked token into the "farm", and claim rewards. This will
- * result in a RevoFarmBot that does not auto-compound yield; it acts only as "storage" for a
+ * Minimally, subclasses must implement the _deposit and _withdraw, methods that
+ * deposit/withdraw an amount of the staked token into the "farm". This will
+ * result in a farm bot that does not auto-compound yield; it acts only as "storage" for a
  * user's staking token.
  *
  * Notably, this class does not contain a virtual "compound" function; this is because depending
@@ -31,7 +31,7 @@ import "../../fees/interfaces/IRevoFees.sol";
  * For convenience and ease of naming, the staking token is referred to as "LP" throughout the class,
  * although in reality, it may not represent an actual liquidity token.
  **/
-abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
+abstract contract StakingTokenHolder is ERC20, AccessControl, Pausable {
     using SafeERC20 for IERC20;
 
     event FeesUpdated(address indexed by, address indexed to);
@@ -71,12 +71,6 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
     uint256 public interestEarnedNumerator;
     uint256 public interestEarnedDenominator = 10000;
 
-    // List of rewards tokens. The first token in this list is assumed to be the primary token;
-    // the rest correspond to the staking reward contract's external reward tokens. The order of these tokens
-    // is very important; the first must correspond to the MoolaStakingRewards contract's "native" reward token,
-    // and the rest must correspond to its "external" tokens, in the same order as they appear in the contract.
-    IERC20[] public rewardsTokens;
-
     // Acceptable slippage when minting LP; can be updated by admin
     uint256 public slippageNumerator = 99;
     uint256 public slippageDenominator = 100;
@@ -101,13 +95,8 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
         address _reserveAddress,
         address _stakingToken,
         address _revoFees,
-        address[] memory _rewardsTokens,
         string memory _symbol
     ) ERC20("Revo FP Token", _symbol) {
-        for (uint256 i = 0; i < _rewardsTokens.length; i++) {
-            rewardsTokens.push(IERC20(_rewardsTokens[i]));
-        }
-
         revoFees = IRevoFees(_revoFees);
         stakingToken = IERC20(_stakingToken);
         reserveAddress = _reserveAddress;
@@ -239,11 +228,16 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
     // Abstract method for withdrawing LP from a farm
     function _withdraw(uint256 _lpAmount) internal virtual;
 
-    // Abstract method for claiming rewards from a farm
-    function _claimRewards() internal virtual;
-
-    // Convenience method for sublcasses
-    function investAllAndSendFees() internal whenNotPaused {
+    // Convenience method for subclasses
+    function issuePerformanceFees()
+        internal
+        whenNotPaused
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
         // send fees to compounder and reserve
         uint256 lpBalance = stakingToken.balanceOf(address(this));
         uint256 compounderFee = revoFees.compounderFee(lpBalance);
@@ -267,9 +261,8 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
             "Sending fees failed"
         );
 
-        // reinvest LPs and adjust FP weight
+        // Adjust FP weight and send compounder bonus
         uint256 lpEarnings = lpBalance - compounderFee - reserveFee;
-        _deposit(lpEarnings);
         lpTotalBalance += lpEarnings;
 
         // update interest rate
@@ -278,21 +271,7 @@ abstract contract RevoFarmBot is ERC20, AccessControl, Pausable {
             lpTotalBalance;
 
         revoFees.issueCompounderBonus(msg.sender);
-        emit Compound(
-            msg.sender,
-            lpEarnings,
-            lpTotalBalance,
-            compounderFee,
-            reserveFee
-        );
-    }
-
-    function getRewardsTokensBalances() internal returns (uint256[] memory) {
-        uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
-        for (uint256 i = 0; i < rewardsTokens.length; i++) {
-            _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
-        }
-        return _tokenBalances;
+        return (lpEarnings, compounderFee, reserveFee);
     }
 
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {

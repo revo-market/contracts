@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 import "hardhat/console.sol";
 
-import "./RevoFarmBot.sol";
+import "./StakingTokenHolder.sol";
 import "../../library/UniswapRouter.sol";
 import "../../ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02SwapOnly.sol";
 import "../../ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02.sol";
@@ -19,7 +19,7 @@ import "../../ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Pair.sol";
  * This is a common enough use-case such that an intermediate abstract base class is justified.
  * In particular, this applies to both Sushiswap and Ubeswap, regardless of the underlying farm.
  **/
-abstract contract RevoUniswapStakingTokenStrategy is RevoFarmBot {
+abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
     event LiquidityRouterUpdated(
         address indexed by,
         address indexed routerAddress
@@ -32,6 +32,12 @@ abstract contract RevoUniswapStakingTokenStrategy is RevoFarmBot {
     IERC20 public stakingToken0; // LP token0
     IERC20 public stakingToken1; // LP token1
 
+    // List of rewards tokens. The first token in this list is assumed to be the primary token;
+    // the rest correspond to the staking reward contract's external reward tokens. The order of these tokens
+    // is very important; the first must correspond to the MoolaStakingRewards contract's "native" reward token,
+    // and the rest must correspond to its "external" tokens, in the same order as they appear in the contract.
+    IERC20[] public rewardsTokens;
+
     constructor(
         address _owner,
         address _reserveAddress,
@@ -42,15 +48,18 @@ abstract contract RevoUniswapStakingTokenStrategy is RevoFarmBot {
         address _liquidityRouter,
         string memory _symbol
     )
-        RevoFarmBot(
+        StakingTokenHolder(
             _owner,
             _reserveAddress,
             _stakingToken,
             _revoFees,
-            _rewardsTokens,
             _symbol
         )
     {
+        for (uint256 i = 0; i < _rewardsTokens.length; i++) {
+            rewardsTokens.push(IERC20(_rewardsTokens[i]));
+        }
+
         swapRouter = IUniswapV2Router02SwapOnly(_swapRouter);
         liquidityRouter = IUniswapV2Router02(_liquidityRouter);
 
@@ -73,6 +82,9 @@ abstract contract RevoUniswapStakingTokenStrategy is RevoFarmBot {
         swapRouter = IUniswapV2Router02SwapOnly(_swapRouter);
         emit SwapRouterUpdated(msg.sender, _swapRouter);
     }
+
+    // Abstract method for claiming rewards from a farm
+    function _claimRewards() internal virtual;
 
     /**
      * The _paths parameter represents a list of paths to use when swapping each rewards token to token0/token1 of the LP.
@@ -116,11 +128,17 @@ abstract contract RevoUniswapStakingTokenStrategy is RevoFarmBot {
         // Get rewards from farm
         _claimRewards();
 
+        // Get the current balance of rewards tokens
+        uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
+        for (uint256 i = 0; i < rewardsTokens.length; i++) {
+            _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
+        }
+
         // Swap rewards tokens for equal value of LP tokens
         (uint256 _amountToken0, uint256 _amountToken1) = UniswapRouter
             .swapTokensForEqualAmounts(
                 swapRouter,
-                getRewardsTokensBalances(),
+                _tokenBalances,
                 _paths,
                 rewardsTokens,
                 _minAmountsOut,
@@ -139,7 +157,20 @@ abstract contract RevoUniswapStakingTokenStrategy is RevoFarmBot {
             _deadline
         );
 
-        // Send fees, then deposit the LP in the farm
-        investAllAndSendFees();
+        // Send fees, then deposit the remaining LP in the farm
+        (
+            uint256 lpEarnings,
+            uint256 compounderFee,
+            uint256 reserveFee
+        ) = issuePerformanceFees();
+        _deposit(lpEarnings);
+
+        emit Compound(
+            msg.sender,
+            lpEarnings,
+            lpTotalBalance,
+            compounderFee,
+            reserveFee
+        );
     }
 }

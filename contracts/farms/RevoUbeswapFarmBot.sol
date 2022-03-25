@@ -3,9 +3,10 @@ pragma solidity 0.8.4;
 
 import "hardhat/console.sol";
 
-import "../library/MoolaStakingRewards.sol";
 import "../ubeswap-farming/interfaces/IMoolaStakingRewards.sol";
 import "./common/RevoUniswapStakingTokenStrategy.sol";
+import "../openzeppelin-solidity/contracts/SafeERC20.sol";
+import "../ubeswap-farming/interfaces/IMoolaStakingRewards.sol";
 
 /**
  * RevoUbeswapFarmBot is a farmbot:
@@ -17,6 +18,8 @@ import "./common/RevoUniswapStakingTokenStrategy.sol";
  * This farmbot is suitable for use on top of a handful of Ubeswap yield farming positions.
  **/
 contract RevoUbeswapFarmBot is RevoUniswapStakingTokenStrategy {
+    using SafeERC20 for IERC20;
+
     IMoolaStakingRewards public stakingRewards;
 
     constructor(
@@ -45,14 +48,16 @@ contract RevoUbeswapFarmBot is RevoUniswapStakingTokenStrategy {
     }
 
     function _deposit(uint256 _lpAmount) internal override whenNotPaused {
-        MoolaStakingRewards.deposit(stakingRewards, stakingToken, _lpAmount);
+        require(_lpAmount > 0, "Cannot invest in farm because lpAmount is 0");
+        stakingToken.safeApprove(address(stakingRewards), _lpAmount);
+        stakingRewards.stake(_lpAmount);
     }
 
     function _withdraw(uint256 _lpAmount) internal override {
-        MoolaStakingRewards.withdraw(stakingRewards, _lpAmount);
+        stakingRewards.withdraw(_lpAmount);
     }
 
     function _claimRewards() internal override whenNotPaused {
-        MoolaStakingRewards.claimRewards(stakingRewards);
+        stakingRewards.getReward();
     }
 }
