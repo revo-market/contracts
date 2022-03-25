@@ -229,19 +229,19 @@ abstract contract StakingTokenHolder is ERC20, AccessControl, Pausable {
     function _withdraw(uint256 _lpAmount) internal virtual;
 
     // Convenience method for subclasses
-    function issuePerformanceFees()
+    function issuePerformanceFeesAndBonus()
         internal
         whenNotPaused
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 lpEarnings,
+            uint256 compounderFee,
+            uint256 reserveFee
         )
     {
         // send fees to compounder and reserve
         uint256 lpBalance = stakingToken.balanceOf(address(this));
-        uint256 compounderFee = revoFees.compounderFee(lpBalance);
-        uint256 reserveFee = revoFees.reserveFee(lpBalance);
+        compounderFee = revoFees.compounderFee(lpBalance);
+        reserveFee = revoFees.reserveFee(lpBalance);
         require(
             compounderFee + reserveFee <=
                 (lpBalance * maxPerformanceFeeNumerator) /
@@ -262,7 +262,7 @@ abstract contract StakingTokenHolder is ERC20, AccessControl, Pausable {
         );
 
         // Adjust FP weight and send compounder bonus
-        uint256 lpEarnings = lpBalance - compounderFee - reserveFee;
+        lpEarnings = lpBalance - compounderFee - reserveFee;
         lpTotalBalance += lpEarnings;
 
         // update interest rate

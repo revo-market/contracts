@@ -157,12 +157,12 @@ abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
             _deadline
         );
 
-        // Send fees, then deposit the remaining LP in the farm
+        // Send fees and bonus, then deposit the remaining LP in the farm
         (
             uint256 lpEarnings,
             uint256 compounderFee,
             uint256 reserveFee
-        ) = issuePerformanceFees();
+        ) = issuePerformanceFeesAndBonus();
         _deposit(lpEarnings);
 
         emit Compound(

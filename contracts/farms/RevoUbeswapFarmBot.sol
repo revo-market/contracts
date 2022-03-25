@@ -49,7 +49,7 @@ contract RevoUbeswapFarmBot is RevoUniswapStakingTokenStrategy {
 
     function _deposit(uint256 _lpAmount) internal override whenNotPaused {
         require(_lpAmount > 0, "Cannot invest in farm because lpAmount is 0");
-        stakingToken.safeApprove(address(stakingRewards), _lpAmount);
+        stakingToken.safeIncreaseAllowance(address(stakingRewards), _lpAmount);
         stakingRewards.stake(_lpAmount);
     }
 
