@@ -163,7 +163,11 @@ abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
             uint256 compounderFee,
             uint256 reserveFee
         ) = issuePerformanceFeesAndBonus();
+
         _deposit(lpEarnings);
+
+        // Update FP weight and interest rate with earnings
+        updateFpWeightAndInterestRate(lpEarnings);
 
         emit Compound(
             msg.sender,

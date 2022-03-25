@@ -261,17 +261,24 @@ abstract contract StakingTokenHolder is ERC20, AccessControl, Pausable {
             "Sending fees failed"
         );
 
-        // Adjust FP weight and send compounder bonus
-        lpEarnings = lpBalance - compounderFee - reserveFee;
-        lpTotalBalance += lpEarnings;
-
-        // update interest rate
-        interestEarnedNumerator =
-            (lpEarnings * interestEarnedDenominator) /
-            lpTotalBalance;
+        // Send compounder bonus
 
         revoFees.issueCompounderBonus(msg.sender);
+
+        lpEarnings = lpBalance - compounderFee - reserveFee;
         return (lpEarnings, compounderFee, reserveFee);
+    }
+
+    // Convenience method for subclasses
+    function updateFpWeightAndInterestRate(uint256 _lpEarnings)
+        internal
+        whenNotPaused
+    {
+        lpTotalBalance += _lpEarnings;
+
+        interestEarnedNumerator =
+            (_lpEarnings * interestEarnedDenominator) /
+            lpTotalBalance;
     }
 
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
