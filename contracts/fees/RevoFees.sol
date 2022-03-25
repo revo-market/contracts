@@ -1,8 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
-import "./ubeswap-farming/contracts/Owned.sol";
-import "./IRevoFees.sol";
+import "../ubeswap-farming/contracts/Owned.sol";
+import "./interfaces/IRevoFees.sol";
 
 contract RevoFees is Owned, IRevoFees {
     // compounder fee: a performance fee (taken from farming rewards) to compensate someone who calls 'compound' method

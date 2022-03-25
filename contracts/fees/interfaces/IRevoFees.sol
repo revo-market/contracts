@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
-import "./openzeppelin-solidity/contracts/IERC20.sol";
+import "../../openzeppelin-solidity/contracts/IERC20.sol";
 
 struct TokenAmount {
     IERC20 token;

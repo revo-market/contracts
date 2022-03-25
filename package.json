@@ -27,8 +27,8 @@
     "deploy-contracts-alfajores": "hardhat deploy --network alfajores",
     "deploy-contracts-mainnet": "hardhat deploy --network mainnet",
     "test": "mocha 'test/**/*.ts'",
-    "lint": "solhint --fix contracts/*.sol",
-    "prettier": "prettier --write 'contracts/*.sol'"
+    "lint": "solhint --fix 'contracts/fees/**/*.sol' 'contracts/library/**/*.sol' 'contracts/farms/**/*.sol'",
+    "prettier": "prettier --write 'contracts/fees/**/*.sol' 'contracts/library/**/*.sol' 'contracts/farms/**/*.sol'"
   },
   "mocha": {
     "require": [

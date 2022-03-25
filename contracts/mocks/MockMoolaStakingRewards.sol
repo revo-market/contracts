@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
 import "../openzeppelin-solidity/contracts/IERC20.sol";
-import "../IMoolaStakingRewards.sol";
+import "../ubeswap-farming/interfaces/IMoolaStakingRewards.sol";
 
 contract MockMoolaStakingRewards is IMoolaStakingRewards {
     IERC20 public rewardsToken;
