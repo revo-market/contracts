@@ -32,10 +32,6 @@ abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
     IERC20 public stakingToken0; // LP token0
     IERC20 public stakingToken1; // LP token1
 
-    // List of rewards tokens. The first token in this list is assumed to be the primary token;
-    // the rest correspond to the staking reward contract's external reward tokens. The order of these tokens
-    // is very important; the first must correspond to the MoolaStakingRewards contract's "native" reward token,
-    // and the rest must correspond to its "external" tokens, in the same order as they appear in the contract.
     IERC20[] public rewardsTokens;
 
     constructor(
