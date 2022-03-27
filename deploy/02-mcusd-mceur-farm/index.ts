@@ -1,5 +1,5 @@
 import { DeployerFn } from "@ubeswap/hardhat-celo"
-import { UbeswapFarmBot__factory } from "../../typechain"
+import { RevoUbeswapFarmBot__factory } from "../../typechain"
 
 const main: DeployerFn<{}> = async ({
   deployCreate2,
@@ -19,8 +19,8 @@ const main: DeployerFn<{}> = async ({
   ]
   const SYMBOL = "RFP" // "Revo Farm Point". Same convention as Ubeswap's "ULP".
 
-  const ubeswapFarmBot = await deployCreate2('UbeswapFarmBot', {
-    factory: UbeswapFarmBot__factory,
+  const revoUbeswapFarmBot = await deployCreate2('RevoUbeswapFarmBot', {
+    factory: RevoUbeswapFarmBot__factory,
     signer: deployer,
     args: [
       OWNER_ADDRESS,
@@ -28,15 +28,15 @@ const main: DeployerFn<{}> = async ({
       STAKING_REWARDS_ADDRESS,
       STAKING_TOKEN_ADDRESS,
       REVO_FEES_ADDRESS,
+      REWARDS_TOKENS,
       SWAP_ROUTER_ADDRESS,
       LIQUIDITY_ROUTER_ADDRESS,
-      REWARDS_TOKENS,
       SYMBOL
     ]
   })
 
   return {
-    UbeswapFarmBot: ubeswapFarmBot.address,
+    RevoUbeswapFarmBot: revoUbeswapFarmBot.address,
   }
 }
 
