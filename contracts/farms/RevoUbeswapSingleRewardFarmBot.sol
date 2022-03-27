@@ -31,17 +31,22 @@ contract RevoUbeswapSingleRewardFarmBot is RevoUniswapStakingTokenStrategy {
         address _swapRouter,
         address _liquidityRouter,
         string memory _symbol
-    ) 	RevoUniswapStakingTokenStrategy(
+    )
+        RevoUniswapStakingTokenStrategy(
             _owner,
             _reserveAddress,
             _stakingToken,
             _revoFees,
-	    _rewardsTokens,
+            _rewardsTokens,
             _swapRouter,
             _liquidityRouter,
             _symbol
-        ) {
-	require (_rewardsTokens.length == 1, "Must specify exactly one rewards token");
+        )
+    {
+        require(
+            _rewardsTokens.length == 1,
+            "Must specify exactly one rewards token"
+        );
         stakingRewards = IStakingRewards(_stakingRewards);
     }
 
