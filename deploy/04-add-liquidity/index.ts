@@ -1,6 +1,6 @@
 import { DeployerFn } from "@ubeswap/hardhat-celo"
 import {
-  UbeswapFarmBot__factory,
+  RevoUbeswapFarmBot__factory,
   ERC20__factory
 } from "../../typechain"
 import ethers from "ethers"
@@ -21,7 +21,7 @@ const main: DeployerFn<{}> = async ({
     // Approve farm to spend it
     await ERC20__factory.connect(STAKING_TOKEN_ADDRESS, deployer).approve(FARM_ADDRESS, lpBalance)
     // Deposit LP
-    await (await UbeswapFarmBot__factory.connect(FARM_ADDRESS, deployer).deposit(lpBalance)).wait()
+    await (await RevoUbeswapFarmBot__factory.connect(FARM_ADDRESS, deployer).deposit(lpBalance)).wait()
     // Withdraw it...
     //await (await UbeswapFarmBot__factory.connect(FARM_ADDRESS, deployer).withdrawAll()).wait()
   }

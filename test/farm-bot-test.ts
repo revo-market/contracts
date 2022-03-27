@@ -5,13 +5,13 @@ chai.use(chaiAsPromised)
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {BigNumber} from "ethers";
 import {
-  UbeswapFarmBot,
+  RevoUbeswapFarmBot,
   MockERC20,
   MockLPToken,
   MockRevoFees,
   MockRouter,
   MockMoolaStakingRewards,
-  UbeswapFarmBot__factory,
+  RevoUbeswapFarmBot__factory,
 } from "../typechain"
 
 const {ethers} = require("hardhat")
@@ -26,7 +26,7 @@ describe('Farm bot tests', () => {
     stakingRewardsContract: MockMoolaStakingRewards,
     routerContract: MockRouter,
     stakingToken0Address: string, stakingToken1Address: string,
-    farmBotFactory: UbeswapFarmBot__factory
+    farmBotFactory: RevoUbeswapFarmBot__factory
   beforeEach(async () => {
     [deployer, reserve, compounder, investor0, investor1] = await ethers.getSigners()
     const revoBountyFactory = await ethers.getContractFactory('MockRevoFees')
@@ -72,17 +72,18 @@ describe('Farm bot tests', () => {
     expect(await stakingRewardsContract.stakingToken())
       .to.equal(lpTokenContract.address)
 
-    farmBotFactory = await ethers.getContractFactory('UbeswapFarmBot')
+    farmBotFactory = await ethers.getContractFactory('RevoUbeswapFarmBot')
   })
   it('Able to deploy farm bot to local test chain', async () => {
-    const farmBotContract: UbeswapFarmBot = await farmBotFactory.deploy(
+    const farmBotContract: RevoUbeswapFarmBot = await farmBotFactory.deploy(
       deployer.address,
       reserve.address,
       stakingRewardsContract.address,
       lpTokenContract.address,
       feeContract.address,
-      routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+      routerContract.address,
+      routerContract.address,
       'FP'
     )
     expect(!!farmBotContract.address).not.to.be.false
@@ -95,8 +96,9 @@ describe('Farm bot tests', () => {
       stakingRewardsContract.address,
       lpTokenContract.address,
       feeContract.address,
-      routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+      routerContract.address,
+      routerContract.address,
       'FP',
     ))
 
@@ -128,8 +130,9 @@ describe('Farm bot tests', () => {
       stakingRewardsContract.address,
       lpTokenContract.address,
       feeContract.address,
-      routerContract.address,
       [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+      routerContract.address,
+      routerContract.address,
       'FP',
     ))
 
@@ -165,7 +168,7 @@ describe('Farm bot tests', () => {
   })
 
   describe('Compound', () => {
-    let farmBotContract: UbeswapFarmBot, paths: [string[], string[]][]
+    let farmBotContract: RevoUbeswapFarmBot, paths: [string[], string[]][]
     beforeEach(async () => {
       farmBotContract = (await farmBotFactory.deploy(
         deployer.address,
@@ -173,8 +176,9 @@ describe('Farm bot tests', () => {
         stakingRewardsContract.address,
         lpTokenContract.address,
         feeContract.address,
+	[rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
         routerContract.address,
-        [rewardsToken0Contract.address, rewardsToken1Contract.address, rewardsToken2Contract.address],
+	routerContract.address,
         'FP',
       ))
 
@@ -339,8 +343,9 @@ describe('Farm bot tests', () => {
         stakingRewardsContract.address,
         lpTokenContract.address,
         feeContract.address,
+	[stakingToken0Address],
         routerContract.address,
-        [stakingToken0Address],
+	routerContract.address,
         'FP',
       ))
       const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
