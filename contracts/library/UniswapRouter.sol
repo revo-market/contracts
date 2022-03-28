@@ -20,7 +20,7 @@ library UniswapRouter {
         IERC20 startToken,
         uint256 minAmountOut,
         uint256 deadline
-    ) public returns (uint256) {
+    ) internal returns (uint256) {
         if (path.length >= 2 && startTokenBudget > 0) {
             startToken.safeIncreaseAllowance(address(router), startTokenBudget);
             uint256[] memory _swapResultAmounts = router
@@ -44,7 +44,7 @@ library UniswapRouter {
         IERC20[] memory startTokens,
         uint256[2][] memory minAmountsOut,
         uint256 deadline
-    ) public returns (uint256, uint256) {
+    ) internal returns (uint256, uint256) {
         uint256 _totalAmountToken0 = 0;
         uint256 _totalAmountToken1 = 0;
         for (uint256 i = 0; i < tokenBalances.length; i++) {
@@ -78,7 +78,7 @@ library UniswapRouter {
         uint256 amount0Min,
         uint256 amount1Min,
         uint256 deadline
-    ) public {
+    ) internal {
         // Approve the liquidity router to spend the bot's token0/token1
         token0.safeApprove(address(router), amount0Desired);
         token1.safeApprove(address(router), amount1Desired);
