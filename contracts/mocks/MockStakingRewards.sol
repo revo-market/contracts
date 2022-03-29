@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
 import "../openzeppelin-solidity/contracts/IERC20.sol";
-import "../ubeswap-farming/interfaces/IMoolaStakingRewards.sol";
+import "../ubeswap-farming/interfaces/IStakingRewards.sol";
 
 contract MockStakingRewards is IStakingRewards {
     IERC20 public rewardsToken;
@@ -73,9 +73,6 @@ contract MockStakingRewards is IStakingRewards {
 
     function getReward() external override {
         rewardsToken.transfer(msg.sender, amountEarned);
-	for (uint i=0; i<externalRewardsTokens.length; i++) {
-	    externalRewardsTokens[i].transfer(msg.sender, amountEarnedExternal[i]);
-	}
     }
 
     function exit() external override {
