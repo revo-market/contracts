@@ -80,8 +80,8 @@ library UniswapRouter {
         uint256 deadline
     ) internal {
         // Approve the liquidity router to spend the bot's token0/token1
-        token0.safeApprove(address(router), amount0Desired);
-        token1.safeApprove(address(router), amount1Desired);
+        token0.safeIncreaseAllowance(address(router), amount0Desired);
+        token1.safeIncreaseAllowance(address(router), amount1Desired);
 
         // Actually add liquidity
         router.addLiquidity(
