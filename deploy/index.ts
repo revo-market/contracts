@@ -15,12 +15,16 @@
 
 import revoFeeDeployer from './01-revo-fees/index'
 import mcUSDmcEURFarmDeployer from './02-mcusd-mceur-farm/index'
+import ubeCeloFarmDeployer from './05-ube-celo-farm/index'
+import ubeCeloFarmConfigure from './06-configure-ube-celo/index'
 import configureFarm from './03-configure-farm/index'
 import addLiquidity from './04-add-liquidity/index'
 
 export default {
   'revo-fees': revoFeeDeployer,
   'mcusd-mceur': mcUSDmcEURFarmDeployer,
+  'ube-celo': ubeCeloFarmDeployer,
+  'configure-ube-celo': ubeCeloFarmConfigure,
   'configure-farm': configureFarm,
   'add-liquidity': addLiquidity
 }
