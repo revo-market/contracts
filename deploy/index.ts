@@ -19,6 +19,8 @@ import ubeCeloFarmDeployer from './05-ube-celo-farm/index'
 import ubeCeloFarmConfigure from './06-configure-ube-celo/index'
 import configureFarm from './03-configure-farm/index'
 import addLiquidity from './04-add-liquidity/index'
+import cusdCusdcFarmDeployer from './07-cusd-cusdc-farm/index'
+import cusdCusdcFarmConfigure from './08-configure-cusd-cusdc/index'
 
 export default {
   'revo-fees': revoFeeDeployer,
@@ -26,7 +28,9 @@ export default {
   'ube-celo': ubeCeloFarmDeployer,
   'configure-ube-celo': ubeCeloFarmConfigure,
   'configure-farm': configureFarm,
-  'add-liquidity': addLiquidity
+  'add-liquidity': addLiquidity,
+  'cusd-cusdc': cusdCusdcFarmDeployer,
+  'configure-cusd-cusdc': cusdCusdcFarmConfigure,
 }
 
 
