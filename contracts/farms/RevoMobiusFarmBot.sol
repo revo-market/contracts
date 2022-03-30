@@ -168,17 +168,11 @@ contract RevoMobiusFarmBot is StakingTokenHolder {
             halfCeloNativeStakingTokenBalance
         );
 
-        // Calculate what we can expect to get out and adjust for slippage
-        uint256 minSwapOut = swap.calculateSwap(
-            celoNativeStakingTokenIndex,
-            bridgedStakingTokenIndex,
-            halfCeloNativeStakingTokenBalance
-        );
         swap.swap(
             celoNativeStakingTokenIndex,
             bridgedStakingTokenIndex,
             halfCeloNativeStakingTokenBalance,
-            (minSwapOut * slippageNumerator) / slippageDenominator,
+            _minSwapOut,
             _deadline
         );
 
