@@ -184,6 +184,14 @@ contract RevoMobiusFarmBot is StakingTokenHolder {
         amounts.push(stakingToken0Balance);
         amounts.push(stakingToken1Balance);
 
+        stakingToken0.safeIncreaseAllowance(
+            address(swap),
+            stakingToken0Balance
+        );
+        stakingToken1.safeIncreaseAllowance(
+            address(swap),
+            stakingToken1Balance
+        );
         swap.addLiquidity(amounts, _minLiquidity, _deadline);
 
         // Send fees and bonus, then deposit the remaining LP in the farm

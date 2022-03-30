@@ -21,26 +21,10 @@ const main: DeployerFn<{}> = async ({
   deployer,
 }) => {
 
-  const FARM_ADDRESS = "0xdBebF6CDBB51dd36792565E60Ecd97f9Cd6AB7Ef"
+  const FARM_ADDRESS = "0x462529fb6F5Bb2B30DC57a47072a75DfbeaC64B0"
 
   const COMPOUNDER_ADDRESS = "0x642abB1237009956BB67d0B174337D76F0455EDd"
   const COMPOUNDER_ROLE = await RevoMobiusFarmBot__factory.connect(FARM_ADDRESS, deployer).COMPOUNDER_ROLE()
-
-  await doTx(
-    "Compounding",
-    RevoMobiusFarmBot__factory.connect(FARM_ADDRESS, deployer).compound(
-      [
-	[MOBI_ADDRESS, CELO_ADDRESS, CUSD_ADDRESS],
-	[CELO_ADDRESS, CUSD_ADDRESS]
-      ],
-      [0,0],
-      0,
-      0,
-      ethers.BigNumber.from(Date.now()).div(1000).add(300)
-    )
-  )
-
-  return {}
 
   await doTx(
     "Setting compounder role",
@@ -61,6 +45,19 @@ const main: DeployerFn<{}> = async ({
     await (await RevoMobiusFarmBot__factory.connect(FARM_ADDRESS, deployer).deposit(lpBalance)).wait()
   }
 
+  await doTx(
+    "Compounding",
+    RevoMobiusFarmBot__factory.connect(FARM_ADDRESS, deployer).compound(
+      [
+	[MOBI_ADDRESS, CELO_ADDRESS, CUSD_ADDRESS],
+	[CELO_ADDRESS, CUSD_ADDRESS]
+      ],
+      [0,0],
+      0,
+      0,
+      ethers.BigNumber.from(Date.now()).div(1000).add(300)
+    )
+  )
   return {}
 }
 
