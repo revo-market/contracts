@@ -12,7 +12,7 @@ import "../mobius/interfaces/ISwap.sol";
 import "../mobius/interfaces/IMinter.sol";
 
 /**
- * RevoMobiusFarmBot is a farmbot appropriate for most yield farms on Mobius.
+ * RevoMobiusFarmBot is a farmbot appropriate for yield farms on Mobius.
  * The general strategy for reinvestment of rewards is somewhat complicated by the
  * fact that Mobius itself does not provide swap paths from the reward tokens to any
  * of the LP constituent tokens. All of its pools are between some Celo-native version
@@ -203,7 +203,6 @@ contract RevoMobiusFarmBot is StakingTokenHolder {
 
         _deposit(lpEarnings);
 
-        // Update FP weight and interest rate with earnings
         updateFpWeightAndInterestRate(lpEarnings);
 
         emit Compound(
