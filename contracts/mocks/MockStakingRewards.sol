@@ -4,9 +4,9 @@ import "../openzeppelin-solidity/contracts/IERC20.sol";
 import "../ubeswap-farming/interfaces/IStakingRewards.sol";
 
 contract MockStakingRewards is IStakingRewards {
-    IERC20 public rewardsToken;
+    IERC20 public override rewardsToken;
 
-    IERC20 public stakingToken;
+    IERC20 public override stakingToken;
 
     constructor(
         address _rewardsToken,
