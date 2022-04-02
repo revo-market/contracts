@@ -135,22 +135,27 @@ describe('RevoFPBroker tests', () => {
     const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
     await farmBot.mint(investor.address, 5)
     await stakingToken.mint(farmBot.address, 5)
+
+    // kinda dumb but mock router requires this to be able to burn LP in exchange for the underlying tokens
+    await token0.mint(router.address, 5)
+    await token1.mint(router.address, 5)
+
     await revoFPBroker.connect(investor).withdrawFPForStakingTokens(
       farmBot.address,
       5,
-      0,
-      0,
+      5,
+      5,
       arbitraryDeadline
     )
     // should spend FP
     const fpBalance = await farmBot.balanceOf(investor.address)
     expect(fpBalance).to.equal(0)
 
-    // // should get staking tokens // FIXME not working for some reason
-    // const token0Balance = await token0.balanceOf(investor.address)
-    // expect(token0Balance).to.equal(5)
-    // const token1Balance = await token1.balanceOf(investor.address)
-    // expect(token1Balance).to.equal(5)
+    // // should get staking tokens
+    const token0Balance = await token0.balanceOf(investor.address)
+    expect(token0Balance).to.equal(5)
+    const token1Balance = await token1.balanceOf(investor.address)
+    expect(token1Balance).to.equal(5)
   })
 })
 
