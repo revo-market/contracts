@@ -5,11 +5,14 @@ import * as assert from "assert";
 import BigNumber from "BigNumber.js";
 
 const FARM_BOT_ABI = require('../abis/farmBot.json')
+const REVO_FP_BROKER_ABI = require('../abis/revoFPBroker.json')
 
 
 const NODE_URL = 'https://forno.celo.org'
 const LP_TOKEN_ADDRESS = '0xf94fea0c87d2b357dc72b743b45a8cb682b0716e' // mcUSD-mcEUR
 export const FARM_BOT_ADDRESS = '0xCB34fbfC3b9a73bc04D2eb43B62532c7918d9E81'
+
+export const REVO_FP_BROKER_ADDRESS = '0x02763Ce86559Ba8DF9939a1281a988a9d0073C87';
 
 interface Transaction {
   send: (sendParams: {
@@ -30,8 +33,23 @@ export interface FarmBotContract {
     compound: (paths: string[][][], minAmountsOut: number[][], deadline: BigNumber) => Transaction
     grantRole: (role: string, account: string) => Transaction
 
+    stakingToken0: () => Call<void, string>
+    stakingToken1: () => Call<void, string>
     stakingRewards: () => Call<void, string>
     COMPOUNDER_ROLE: () => Call<void, string>
+  }
+}
+
+export interface LiquidityAmounts {
+  amount0Desired: string
+  amount1Desired: string
+  amount0Min: string
+  amount1Min: string
+}
+
+export interface RevoFPBrokerContract {
+  methods: {
+    getUniswapLPAndDeposit: (farmBotAddress: string, liquidityAmounts: LiquidityAmounts, deadline: BigNumber) => Transaction
   }
 }
 
@@ -64,19 +82,21 @@ export async function getKit(privateKey: string): Promise<ContractKit> {
 }
 
 /**
- * Approve Farm Bot to spend the user's LP
+ * Approve a wallet to spend the user's token
  *
  * Useful to prepare for depositing LP directly into farm
  *
  * @param kit
  * @param amount
+ * @param tokenAddress: address of token to approve spending of
+ * @param spenderAddress: address of spender to approve
  */
-export async function approve(kit: ContractKit, amount: string) {
+export async function approve(kit: ContractKit, amount: string, tokenAddress: string = LP_TOKEN_ADDRESS, spenderAddress: string = FARM_BOT_ADDRESS) {
   const walletAddress = kit.web3.eth.defaultAccount
-  console.log(`Approving farm bot at ${FARM_BOT_ADDRESS} to spend ${amount} for ${walletAddress}`)
+  console.log(`Approving ${spenderAddress} to spend ${amount} of token ${tokenAddress} on behalf of ${walletAddress}`)
   assert.ok(walletAddress)
-  const tokenContract = await (new WrapperCache(kit)).getErc20(LP_TOKEN_ADDRESS)
-  const approveTx = await tokenContract.approve(FARM_BOT_ADDRESS, amount).send({
+  const tokenContract = await (new WrapperCache(kit)).getErc20(tokenAddress)
+  const approveTx = await tokenContract.approve(spenderAddress, amount).send({
     from: walletAddress,
     gas: 50000,
     gasPrice: 1000000000
@@ -84,8 +104,12 @@ export async function approve(kit: ContractKit, amount: string) {
   return approveTx.waitReceipt()
 }
 
-export function getFarmBotContract(kit: ContractKit): FarmBotContract {
-  return new kit.web3.eth.Contract(FARM_BOT_ABI, FARM_BOT_ADDRESS)
+export function getFarmBotContract(kit: ContractKit, farmBotAddress: string = FARM_BOT_ADDRESS): FarmBotContract {
+  return new kit.web3.eth.Contract(FARM_BOT_ABI, farmBotAddress)
+}
+
+export function getRevoFPBrokerContract(kit: ContractKit): RevoFPBrokerContract {
+  return new kit.web3.eth.Contract(REVO_FP_BROKER_ABI, REVO_FP_BROKER_ADDRESS)
 }
 
 export async function deposit(kit: ContractKit, amount: string) {
