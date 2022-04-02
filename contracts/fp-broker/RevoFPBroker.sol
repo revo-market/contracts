@@ -49,7 +49,7 @@ contract RevoFPBroker is Pausable, AccessControl {
     *
     * @param _farmBotAddress: address of RevoUniswapStakingTokenStrategy contract
     * @param _liquidityAmounts: how much liquidity to add (grouped to avoid 'stack too deep' error)
-    * @param _deadline: deadline to finish transaction by
+    * @param _deadline: deadline to finish transaction by, in epoch seconds
     */
     function getUniswapLPAndDeposit(
         address _farmBotAddress,
@@ -101,6 +101,38 @@ contract RevoFPBroker is Pausable, AccessControl {
             _fpGained
         );
     }
+
+    /**
+    * Withdraw from a farm bot and remove liquidity from the underlying pool.
+    *
+    * @param _farmBotAddress: address of the farm bot to withdraw from
+    * @param _fpAmount: amount to withdraw
+    * @param _amountAMin: minimum amount of staking token 0 (aka "token A") to receive in exchange
+    * @param _amountBMin: minimum amount of staking token 1 (aka "token B") to receive in exchange
+    * @param _deadline: time to finish by, in epoch seconds
+    */
+    function withdrawFPForStakingTokens(
+        address _farmBotAddress,
+        uint256 _fpAmount,
+        uint256 _amountAMin,
+        uint256 _amountBMin,
+        uint256 _deadline
+    ) external ensure(_deadline) whenNotPaused {
+        require(_fpAmount > 0, "Cannot withdraw because _fpAmount is 0");
+        IERC20(_farmBotAddress).safeTransferFrom(msg.sender, address(this), _fpAmount);
+        RevoUniswapStakingTokenStrategy _farmBot = RevoUniswapStakingTokenStrategy(_farmBotAddress);
+        uint256 _lpAmount = _farmBot.getLpAmount(_fpAmount);
+        _farmBot.withdraw(_lpAmount);
+        (uint256 _amountA, uint256 _amountB) = _farmBot.liquidityRouter().removeLiquidity(
+            address(_farmBot.stakingToken0()),
+            address(_farmBot.stakingToken1()),
+            _lpAmount,
+            _amountAMin,
+            _amountBMin,
+            address(this),
+            _deadline
+        );
+        _farmBot.stakingToken0().safeTransfer(msg.sender, _amountA);
+        _farmBot.stakingToken1().safeTransfer(msg.sender, _amountB);
+    }
 }
-
-
