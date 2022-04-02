@@ -17,6 +17,12 @@ contract MockRouter is IUniswapV2Router01 {
     function setLPToken(address _lpToken) public {
         lpToken = MockLPToken(_lpToken);
     }
+    bool public useMockStakingTokenAmounts;  // hack for backwards compatibility with tests that dont set liquidity amounts
+    uint[2] stakingTokenAmounts;
+    function setStakingTokenAmounts(uint[2] memory _stakingTokenAmounts) public {
+        useMockStakingTokenAmounts = true;
+        stakingTokenAmounts = _stakingTokenAmounts;
+    }
     function addLiquidity(
         address tokenA,
         address tokenB,
@@ -27,8 +33,13 @@ contract MockRouter is IUniswapV2Router01 {
         address to,
         uint deadline
     ) external override returns (uint amountA, uint amountB, uint liquidity) {
-        amountA = amountADesired;
-        amountB = amountBDesired;
+        if (useMockStakingTokenAmounts) {
+            amountA = stakingTokenAmounts[0];
+            amountB = stakingTokenAmounts[1];
+        } else {
+            amountA = amountADesired;
+            amountB = amountBDesired;
+        }
         IERC20(tokenA).transferFrom(msg.sender, address(this), amountA);
         IERC20(tokenB).transferFrom(msg.sender, address(this), amountB);
         liquidity = mockLiquidity;
