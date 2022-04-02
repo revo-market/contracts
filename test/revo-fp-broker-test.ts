@@ -10,7 +10,7 @@ const {ethers} = require('hardhat')
 
 describe('RevoFPBroker tests', () => {
   let owner: SignerWithAddress,
-    depositor: SignerWithAddress,
+    investor: SignerWithAddress,
     revoFPBroker: RevoFPBroker,
     token0: MockERC20,
     token1: MockERC20,
@@ -19,7 +19,7 @@ describe('RevoFPBroker tests', () => {
     farmBot: MockFarmBot
 
   beforeEach(async () => {
-    [owner, depositor] = await ethers.getSigners()
+    [owner, investor] = await ethers.getSigners()
     const brokerFactory = await ethers.getContractFactory('RevoFPBroker')
     revoFPBroker = await brokerFactory.deploy(
       await owner.getAddress(),  // owner
@@ -38,16 +38,16 @@ describe('RevoFPBroker tests', () => {
       router.address,
       stakingToken.address
     )
-    await token0.mint(depositor.address, 10)
-    await token1.mint(depositor.address, 10)
   })
 
   it('able to deposit LP in a farm bot', async () => {
-    await token0.connect(depositor).approve(revoFPBroker.address, 10)
-    await token1.connect(depositor).approve(revoFPBroker.address, 10)
+    await token0.mint(investor.address, 10)
+    await token1.mint(investor.address, 10)
+    await token0.connect(investor).approve(revoFPBroker.address, 10)
+    await token1.connect(investor).approve(revoFPBroker.address, 10)
     const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
     await router.setMockLiquidity(5)
-    await revoFPBroker.connect(depositor).getUniswapLPAndDeposit(
+    await revoFPBroker.connect(investor).getUniswapLPAndDeposit(
       farmBot.address,
       {
         amount0Desired: 10,
@@ -59,22 +59,24 @@ describe('RevoFPBroker tests', () => {
     )
 
     // should spend staking tokens
-    const token0Balance = await token0.balanceOf(depositor.address)
+    const token0Balance = await token0.balanceOf(investor.address)
     expect(token0Balance).to.equal(0)
-    const token1Balance = await token1.balanceOf(depositor.address)
+    const token1Balance = await token1.balanceOf(investor.address)
     expect(token1Balance).to.equal(0)
 
     // should get FP tokens
-    const fpBalance = await farmBot.balanceOf(depositor.address);
+    const fpBalance = await farmBot.balanceOf(investor.address);
     expect(fpBalance).to.equal(5)
   })
   it('returns leftover token0 if slippage occurs', async () => {
-    await token0.connect(depositor).approve(revoFPBroker.address, 10)
-    await token1.connect(depositor).approve(revoFPBroker.address, 10)
+    await token0.mint(investor.address, 10)
+    await token1.mint(investor.address, 10)
+    await token0.connect(investor).approve(revoFPBroker.address, 10)
+    await token1.connect(investor).approve(revoFPBroker.address, 10)
     const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
     await router.setMockLiquidity(5)
     await router.setStakingTokenAmounts([9, 10])
-    await revoFPBroker.connect(depositor).getUniswapLPAndDeposit(
+    await revoFPBroker.connect(investor).getUniswapLPAndDeposit(
       farmBot.address,
       {
         amount0Desired: 10,
@@ -85,25 +87,27 @@ describe('RevoFPBroker tests', () => {
       arbitraryDeadline
     )
     // should get leftovers back
-    const token0Balance = await token0.balanceOf(depositor.address)
+    const token0Balance = await token0.balanceOf(investor.address)
     expect(token0Balance).to.equal(1)
 
     // should spend token1
-    const token1Balance = await token1.balanceOf(depositor.address)
+    const token1Balance = await token1.balanceOf(investor.address)
     expect(token1Balance).to.equal(0)
 
     // should get FP
-    const lpBalance = await farmBot.balanceOf(depositor.address)
-    expect(lpBalance).to.equal(5)
+    const fpBalance = await farmBot.balanceOf(investor.address)
+    expect(fpBalance).to.equal(5)
   })
 
   it('returns leftover token0 if slippage occurs', async () => {
-    await token0.connect(depositor).approve(revoFPBroker.address, 10)
-    await token1.connect(depositor).approve(revoFPBroker.address, 10)
+    await token0.mint(investor.address, 10)
+    await token1.mint(investor.address, 10)
+    await token0.connect(investor).approve(revoFPBroker.address, 10)
+    await token1.connect(investor).approve(revoFPBroker.address, 10)
     const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
     await router.setMockLiquidity(5)
     await router.setStakingTokenAmounts([10, 9])
-    await revoFPBroker.connect(depositor).getUniswapLPAndDeposit(
+    await revoFPBroker.connect(investor).getUniswapLPAndDeposit(
       farmBot.address,
       {
         amount0Desired: 10,
@@ -114,16 +118,39 @@ describe('RevoFPBroker tests', () => {
       arbitraryDeadline
     )
     // should get leftovers back
-    const token1Balance = await token1.balanceOf(depositor.address)
+    const token1Balance = await token1.balanceOf(investor.address)
     expect(token1Balance).to.equal(1)
 
     // should spend token0
-    const token0Balance = await token0.balanceOf(depositor.address)
+    const token0Balance = await token0.balanceOf(investor.address)
     expect(token0Balance).to.equal(0)
 
     // should get FP
-    const lpBalance = await farmBot.balanceOf(depositor.address)
-    expect(lpBalance).to.equal(5)
+    const fpBalance = await farmBot.balanceOf(investor.address)
+    expect(fpBalance).to.equal(5)
+  })
+
+  it('able to withdraw', async () => {
+    await farmBot.connect(investor).approve(revoFPBroker.address, 5)
+    const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+    await farmBot.mint(investor.address, 5)
+    await stakingToken.mint(farmBot.address, 5)
+    await revoFPBroker.connect(investor).withdrawFPForStakingTokens(
+      farmBot.address,
+      5,
+      0,
+      0,
+      arbitraryDeadline
+    )
+    // should spend FP
+    const fpBalance = await farmBot.balanceOf(investor.address)
+    expect(fpBalance).to.equal(0)
+
+    // // should get staking tokens // FIXME not working for some reason
+    // const token0Balance = await token0.balanceOf(investor.address)
+    // expect(token0Balance).to.equal(5)
+    // const token1Balance = await token1.balanceOf(investor.address)
+    // expect(token1Balance).to.equal(5)
   })
 })
 

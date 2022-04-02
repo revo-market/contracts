@@ -39,4 +39,10 @@ contract MockFarmBot is MockERC20 {
         stakingToken.transferFrom(msg.sender, address(this), _lpAmount);
         mint(msg.sender, getFpAmount(_lpAmount));
     }
+
+    function withdraw(uint256 _lpAmount) public {
+        uint256 _fpAmount = getFpAmount(_lpAmount);
+        burn(msg.sender, _fpAmount);
+        stakingToken.transfer(msg.sender, _lpAmount);
+    }
 }

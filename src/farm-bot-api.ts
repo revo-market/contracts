@@ -12,7 +12,7 @@ const NODE_URL = 'https://forno.celo.org'
 const LP_TOKEN_ADDRESS = '0xf94fea0c87d2b357dc72b743b45a8cb682b0716e' // mcUSD-mcEUR
 export const FARM_BOT_ADDRESS = '0xCB34fbfC3b9a73bc04D2eb43B62532c7918d9E81'
 
-export const REVO_FP_BROKER_ADDRESS = '0x02763Ce86559Ba8DF9939a1281a988a9d0073C87';
+export const REVO_FP_BROKER_ADDRESS = '0x91C291B2DF64E7fa8951A90f4E0bD358468BFAe3';
 
 interface Transaction {
   send: (sendParams: {
@@ -32,6 +32,7 @@ export interface FarmBotContract {
     withdraw: (amount: string) => Transaction
     compound: (paths: string[][][], minAmountsOut: number[][], deadline: BigNumber) => Transaction
     grantRole: (role: string, account: string) => Transaction
+    approve: (spenderAddress: string, amount: string) => Transaction
 
     stakingToken0: () => Call<void, string>
     stakingToken1: () => Call<void, string>
@@ -50,6 +51,10 @@ export interface LiquidityAmounts {
 export interface RevoFPBrokerContract {
   methods: {
     getUniswapLPAndDeposit: (farmBotAddress: string, liquidityAmounts: LiquidityAmounts, deadline: BigNumber) => Transaction
+    withdrawFPForStakingTokens: (farmBotAddress: string, fpAmount: string,
+        amountAMin: string,
+        amountBMin: string,
+        deadline: BigNumber) => Transaction
   }
 }
 

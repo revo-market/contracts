@@ -29,8 +29,10 @@ async function main(){
     from: kit.web3.eth.defaultAccount!!,
     gas: 1e7
   })
+
+  await fpBroker.methods.withdrawFPForStakingTokens(farmBotAddress, process.env.FP_AMOUNT!!, '0', '0', deadline)
 }
 
 main()
-  .catch(console.error)
   .then(() => {console.log('done')})
+  .catch(console.error)
