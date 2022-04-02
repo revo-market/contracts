@@ -68,7 +68,7 @@ describe('RevoFPBroker tests', () => {
     const fpBalance = await farmBot.balanceOf(depositor.address);
     expect(fpBalance).to.equal(5)
   })
-  it('returns leftovers if slippage occurs', async () => {
+  it('returns leftover token0 if slippage occurs', async () => {
     await token0.connect(depositor).approve(revoFPBroker.address, 10)
     await token1.connect(depositor).approve(revoFPBroker.address, 10)
     const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
@@ -87,6 +87,39 @@ describe('RevoFPBroker tests', () => {
     // should get leftovers back
     const token0Balance = await token0.balanceOf(depositor.address)
     expect(token0Balance).to.equal(1)
+
+    // should spend token1
+    const token1Balance = await token1.balanceOf(depositor.address)
+    expect(token1Balance).to.equal(0)
+
+    // should get FP
+    const lpBalance = await farmBot.balanceOf(depositor.address)
+    expect(lpBalance).to.equal(5)
+  })
+
+  it('returns leftover token0 if slippage occurs', async () => {
+    await token0.connect(depositor).approve(revoFPBroker.address, 10)
+    await token1.connect(depositor).approve(revoFPBroker.address, 10)
+    const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+    await router.setMockLiquidity(5)
+    await router.setStakingTokenAmounts([10, 9])
+    await revoFPBroker.connect(depositor).getUniswapLPAndDeposit(
+      farmBot.address,
+      {
+        amount0Desired: 10,
+        amount1Desired: 10,
+        amount0Min: 9,
+        amount1Min: 9,
+      },
+      arbitraryDeadline
+    )
+    // should get leftovers back
+    const token1Balance = await token1.balanceOf(depositor.address)
+    expect(token1Balance).to.equal(1)
+
+    // should spend token0
+    const token0Balance = await token0.balanceOf(depositor.address)
+    expect(token0Balance).to.equal(0)
 
     // should get FP
     const lpBalance = await farmBot.balanceOf(depositor.address)
