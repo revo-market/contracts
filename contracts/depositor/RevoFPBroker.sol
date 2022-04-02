@@ -11,12 +11,12 @@ struct LiquidityAmounts {
 }
 
 /**
-* FarmBotDepositor helps users get FP directly from staking tokens (skipping the step where you get LP first).
+* RevoFPBroker helps users get FP directly from staking tokens (skipping the step where you get LP first).
 */
-contract FarmBotDepositor is Pausable, AccessControl {
+contract RevoFPBroker is Pausable, AccessControl {
     using SafeERC20 for IERC20;
 
-    event FarmBotDeposit(
+    event RFPBrokerDeposit(
       address indexed farmBotAddress,
       address indexed depositorAddress,
       uint256 lpGained,
@@ -94,7 +94,7 @@ contract FarmBotDepositor is Pausable, AccessControl {
 
         // send FP to investor
         IERC20(_farmBotAddress).safeTransfer(msg.sender, _fpGained);
-        emit FarmBotDeposit(
+        emit RFPBrokerDeposit(
             _farmBotAddress,
             msg.sender,
             _lpAmount,
