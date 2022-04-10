@@ -19,8 +19,8 @@ contract RevoFPBroker is Pausable, AccessControl {
     event RFPBrokerDeposit(
         address indexed farmBotAddress,
         address indexed depositorAddress,
-        uint256 amount0Invested,
-        uint256 amount1Invested,
+        uint256 token0Invested,
+        uint256 token1Invested,
         uint256 lpGained,
         uint256 fpGained
     );
