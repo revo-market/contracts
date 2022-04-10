@@ -163,20 +163,21 @@ contract RevoFPBroker is Pausable, AccessControl {
         RevoUniswapStakingTokenStrategy _farmBot = RevoUniswapStakingTokenStrategy(
                 _farmBotAddress
             );
-        uint256 _lpAmount = _farmBot.getLpAmount(_fpAmount);
-        uint256 _lpStartBalance = _farmBot.stakingToken().balanceOf(
-            address(this)
-        ); // should be 0 but just in case
-        _farmBot.withdraw(_lpAmount);
-        uint256 _lpGained = _farmBot.stakingToken().balanceOf(address(this)) -
-            _lpStartBalance; // can't just use _lpAmount because there is a withdrawal fee
-        _farmBot.stakingToken().safeIncreaseAllowance(
-            address(_farmBot.liquidityRouter()),
-            _lpGained
-        );
-        (uint256 _token0Gained, uint256 _token1Gained) = _farmBot
-            .liquidityRouter()
+        uint256 _lpGained;
+        {
+            uint256 _lpAmount = _farmBot.getLpAmount(_fpAmount);
+            uint256 _lpStartBalance = _farmBot.stakingToken().balanceOf(
+                address(this)
+            ); // should be 0 but just in case
+            _farmBot.withdraw(_lpAmount);
+            _lpGained =
+                _farmBot.stakingToken().balanceOf(address(this)) -
+                _lpStartBalance; // can't just use _lpAmount because there is a withdrawal fee
+        }
+        (uint256 _token0Gained, uint256 _token1Gained) = UniswapRouter
             .removeLiquidity(
+                _farmBot.liquidityRouter(),
+                _farmBot.stakingToken(),
                 address(_farmBot.stakingToken0()),
                 address(_farmBot.stakingToken1()),
                 _lpGained,
