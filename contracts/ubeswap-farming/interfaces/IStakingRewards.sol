@@ -2,10 +2,15 @@
 
 pragma solidity >=0.4.24;
 
+import "../../openzeppelin-solidity/contracts/SafeERC20.sol";
 
 // https://docs.synthetix.io/contracts/source/interfaces/istakingrewards
 interface IStakingRewards {
     // Views
+    function rewardsToken() external view returns(IERC20);
+
+    function stakingToken() external view returns(IERC20);
+
     function lastTimeRewardApplicable() external view returns (uint256);
 
     function rewardPerToken() external view returns (uint256);

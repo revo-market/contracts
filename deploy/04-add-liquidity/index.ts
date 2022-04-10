@@ -3,7 +3,7 @@ import {
   RevoUbeswapFarmBot__factory,
   ERC20__factory
 } from "../../typechain"
-import ethers from "ethers"
+import { ethers } from "ethers"
 
 const main: DeployerFn<{}> = async ({
   deployer,

@@ -21,6 +21,9 @@ import configureFarm from './03-configure-farm/index'
 import addLiquidity from './04-add-liquidity/index'
 import cusdCusdcFarmDeployer from './07-cusd-cusdc-farm/index'
 import cusdCusdcFarmConfigure from './08-configure-cusd-cusdc/index'
+import mcUSDmcEURMetaFarmDeployer from './09-mcusd-mceur-metafarm/index'
+import configureMetaFarm from './10-configure-metafarm/index'
+import stakeMetaFarm from './11-stake-metafarm/index'
 
 export default {
   'revo-fees': revoFeeDeployer,
@@ -31,6 +34,9 @@ export default {
   'add-liquidity': addLiquidity,
   'cusd-cusdc': cusdCusdcFarmDeployer,
   'configure-cusd-cusdc': cusdCusdcFarmConfigure,
+  'mcusd-mceur-metafarm': mcUSDmcEURMetaFarmDeployer,
+  'configure-metafarm': configureMetaFarm,
+  'stake-metafarm': stakeMetaFarm
 }
 
 

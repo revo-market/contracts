@@ -1,15 +1,6 @@
 import { DeployerFn } from "@ubeswap/hardhat-celo"
 import { RevoUbeswapFarmBot__factory } from "../../typechain"
-import { ContractTransaction } from "ethers"
-
-export const doTx = async (
-  action: string,
-  tx: Promise<ContractTransaction>
-): Promise<void> => {
-  console.log(`Performing ${action}...`);
-  const result = await (await tx).wait();
-  console.log(`${action} done at tx ${result.transactionHash}`);
-};
+import { doTx } from '../utils'
 
 const main: DeployerFn<{}> = async ({
   deployer,
