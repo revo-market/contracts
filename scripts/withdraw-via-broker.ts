@@ -22,7 +22,7 @@ async function main(){
   await fpBroker.methods.withdrawFPForStakingTokens(farmBotAddress, fpAmount, '0', '0', deadline
   ).send({
     from: kit.web3.eth.defaultAccount!!,
-    gas: 1e7
+    gas: 1e6
   })
 }
 
