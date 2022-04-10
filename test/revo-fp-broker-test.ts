@@ -151,7 +151,7 @@ describe('RevoFPBroker tests', () => {
     const fpBalance = await farmBot.balanceOf(investor.address)
     expect(fpBalance).to.equal(0)
 
-    // // should get staking tokens
+    // should get staking tokens
     const token0Balance = await token0.balanceOf(investor.address)
     expect(token0Balance).to.equal(5)
     const token1Balance = await token1.balanceOf(investor.address)
