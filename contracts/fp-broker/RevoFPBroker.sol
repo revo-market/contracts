@@ -19,8 +19,19 @@ contract RevoFPBroker is Pausable, AccessControl {
     event RFPBrokerDeposit(
         address indexed farmBotAddress,
         address indexed depositorAddress,
+        uint256 amount0Invested,
+        uint256 amount1Invested,
         uint256 lpGained,
         uint256 fpGained
+    );
+
+    event RFPBrokerWithdrawal(
+        address indexed farmBotAddress,
+        address indexed withdrawerAddress,
+        uint256 fpBurned,
+        uint256 lpGained,
+        uint256 token0Gained,
+        uint256 token1Gained
     );
 
     constructor(address _owner) {
@@ -120,6 +131,8 @@ contract RevoFPBroker is Pausable, AccessControl {
         emit RFPBrokerDeposit(
             _farmBotAddress,
             msg.sender,
+            _amount0Invested,
+            _amount1Invested,
             _lpAmount,
             _fpGained
         );
@@ -155,18 +168,30 @@ contract RevoFPBroker is Pausable, AccessControl {
             address(this)
         ); // should be 0 but just in case
         _farmBot.withdraw(_lpAmount);
+        uint256 _lpGained = _farmBot.stakingToken().balanceOf(address(this)) -
+            _lpStartBalance; // can't just use _lpAmount because there is a withdrawal fee
         _farmBot.stakingToken().safeIncreaseAllowance(
             address(_farmBot.liquidityRouter()),
-            _lpAmount
+            _lpGained
         );
-        _farmBot.liquidityRouter().removeLiquidity(
-            address(_farmBot.stakingToken0()),
-            address(_farmBot.stakingToken1()),
-            _farmBot.stakingToken().balanceOf(address(this)) - _lpStartBalance, // can't just use _lpAmount because there is a withdrawal fee
-            _amountAMin,
-            _amountBMin,
+        (uint256 _token0Gained, uint256 _token1Gained) = _farmBot
+            .liquidityRouter()
+            .removeLiquidity(
+                address(_farmBot.stakingToken0()),
+                address(_farmBot.stakingToken1()),
+                _lpGained,
+                _amountAMin,
+                _amountBMin,
+                msg.sender,
+                _deadline
+            );
+        emit RFPBrokerWithdrawal(
+            _farmBotAddress,
             msg.sender,
-            _deadline
+            _fpAmount,
+            _lpGained,
+            _token0Gained,
+            _token1Gained
         );
     }
 }
