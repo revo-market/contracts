@@ -78,21 +78,53 @@ library UniswapRouter {
         uint256 amount0Min,
         uint256 amount1Min,
         uint256 deadline
-    ) internal {
+    )
+        internal
+        returns (
+            uint256 amountA,
+            uint256 amountB,
+            uint256 liquidity
+        )
+    {
         // Approve the liquidity router to spend the bot's token0/token1
         token0.safeIncreaseAllowance(address(router), amount0Desired);
         token1.safeIncreaseAllowance(address(router), amount1Desired);
 
         // Actually add liquidity
-        router.addLiquidity(
-            address(token0),
-            address(token1),
-            amount0Desired,
-            amount1Desired,
-            amount0Min,
-            amount1Min,
-            address(this),
-            deadline
-        );
+        return
+            router.addLiquidity(
+                address(token0),
+                address(token1),
+                amount0Desired,
+                amount1Desired,
+                amount0Min,
+                amount1Min,
+                address(this),
+                deadline
+            );
+    }
+
+    function removeLiquidity(
+        IUniswapV2Router02 router,
+        IERC20 stakingToken,
+        address tokenA,
+        address tokenB,
+        uint256 liquidityAmount,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address recipient,
+        uint256 deadline
+    ) internal returns (uint256 amountA, uint256 amountB) {
+        stakingToken.safeIncreaseAllowance(address(router), liquidityAmount);
+        return
+            router.removeLiquidity(
+                tokenA,
+                tokenB,
+                liquidityAmount,
+                amountAMin,
+                amountBMin,
+                recipient,
+                deadline
+            );
     }
 }
