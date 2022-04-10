@@ -23,7 +23,7 @@ contract RevoSushiswapFarmBot is RevoUniswapStakingTokenStrategy {
 
     IMiniChefV2 public stakingRewards;
 
-    // MiniChefV2 maintains a lists of information on each pool/farm; sushiPid
+    // MiniChefV2 maintains lists of information on each pool/farm; sushiPid
     // is used as an index into these lists, and acts as an identifier for which
     // farm to perform operations against.
     uint256 public sushiPid;
@@ -57,6 +57,7 @@ contract RevoSushiswapFarmBot is RevoUniswapStakingTokenStrategy {
     function updateSushiPid(uint256 _sushiPid)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
+        whenPaused
     {
         sushiPid = _sushiPid;
         emit SushiPidUpdated(msg.sender, _sushiPid);
