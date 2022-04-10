@@ -54,6 +54,7 @@ contract MockRouter is IUniswapV2Router01 {
         address to,
         uint deadline
     ) external override returns (uint amountA, uint amountB) {
+        require(lpToken.allowance(msg.sender, address(this)) >= liquidity, "Allowance too low to remove liquidity");
         amountA = amountAMin;
         amountB = amountBMin;
         lpToken.burn(msg.sender, liquidity);
