@@ -3,7 +3,7 @@ import {
   MoolaStakingRewards__factory,
   ERC20__factory
 } from "../../typechain"
-import { ContractTransaction } from "ethers"
+import { sleep, doTx } from '../utils'
 import { ethers } from "ethers"
 
 const STAKING_TOKEN_ADDRESS = '0x25938830fbd7619bf6cfcfdf5c37a22ab15a93ca' // mcUSD / mcUSD-mcEUR-FP liquidity pool
@@ -12,20 +12,6 @@ const MOOLA_STAKING_REWARDS_ADDRESS = '0x26B819D77CcaB96253F5756760EFE3D57dCccf1
 
 const AMOUNT_STAKING_TOKEN = ethers.BigNumber.from("1000000000000000") // .001 mcUSD / mcUSD-mcEUR-FP
 
-function sleep(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-export const doTx = async (
-  action: string,
-  tx: Promise<ContractTransaction>
-): Promise<void> => {
-  console.log(`Performing ${action}...`);
-  const result = await (await tx).wait();
-  console.log(`${action} done at tx ${result.transactionHash}`);
-};
 
 const main: DeployerFn<{}> = async ({
   deployer,

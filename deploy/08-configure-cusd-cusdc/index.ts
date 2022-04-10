@@ -1,21 +1,11 @@
 import { DeployerFn } from "@ubeswap/hardhat-celo"
 import { RevoMobiusFarmBot__factory, ERC20__factory } from "../../typechain"
-import { ContractTransaction } from "ethers"
+import { doTx } from '../utils'
 import { ethers } from "ethers"
-
 
 const MOBI_ADDRESS = "0x73a210637f6F6B7005512677Ba6B3C96bb4AA44B"
 const CELO_ADDRESS = "0x471ece3750da237f93b8e339c536989b8978a438"
 const CUSD_ADDRESS = "0x765de816845861e75a25fca122bb6898b8b1282a"
-
-export const doTx = async (
-  action: string,
-  tx: Promise<ContractTransaction>
-): Promise<void> => {
-  console.log(`Performing ${action}...`);
-  const result = await (await tx).wait();
-  console.log(`${action} done at tx ${result.transactionHash}`);
-};
 
 const main: DeployerFn<{}> = async ({
   deployer,
