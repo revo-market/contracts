@@ -57,8 +57,8 @@ contract MockRouter is IUniswapV2Router01 {
         amountA = amountAMin;
         amountB = amountBMin;
         lpToken.burn(msg.sender, liquidity);
-        IERC20(tokenA).transfer(msg.sender, amountA);
-        IERC20(tokenB).transfer(msg.sender, amountB);
+        IERC20(tokenA).transfer(to, amountA);
+        IERC20(tokenB).transfer(to, amountB);
     }
     function removeLiquidityWithPermit(
         address tokenA,
