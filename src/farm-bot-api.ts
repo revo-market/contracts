@@ -12,7 +12,7 @@ const NODE_URL = 'https://forno.celo.org'
 const LP_TOKEN_ADDRESS = '0xf94fea0c87d2b357dc72b743b45a8cb682b0716e' // mcUSD-mcEUR
 export const FARM_BOT_ADDRESS = '0xCB34fbfC3b9a73bc04D2eb43B62532c7918d9E81'
 
-export const REVO_FP_BROKER_ADDRESS = '0x6D3dD289164b4D9aC23c326Bf24064e8bF0cfD8a';
+export const REVO_FP_BROKER_ADDRESS = '0x97d0D4ae7841c9405A80fB8004dbA96123e076De'
 
 interface Transaction {
   send: (sendParams: {
