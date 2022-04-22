@@ -2,7 +2,7 @@ import {ContractKit, newKit} from "@celo/contractkit";
 import {WrapperCache} from "@celo/contractkit/lib/contract-cache";
 
 import * as assert from "assert";
-import BigNumber from "BigNumber.js";
+import BigNumber from "bignumber.js";
 
 const FARM_BOT_ABI = require('../abis/farmBot.json')
 const REVO_FP_BROKER_ABI = require('../abis/revoFPBroker.json')
