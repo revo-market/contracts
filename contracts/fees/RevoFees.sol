@@ -25,6 +25,12 @@ contract RevoFees is Owned, IRevoFees {
         uint256 reserveFeeNumerator,
         uint256 reserveFeeDenominator
     );
+    event WithdrawalFeeUpdated(
+        address indexed by,
+        uint256 withdrawalFeeNumerator,
+        uint256 withdrawalFeeDenominator
+    );
+    event UseDynamicWithdrawalFeesUpdated(address indexed by, bool newValue);
     uint256 public withdrawalFeeNumerator;
     uint256 public withdrawalFeeDenominator;
     bool public useDynamicWithdrawalFees;
@@ -36,7 +42,8 @@ contract RevoFees is Owned, IRevoFees {
         uint256 _reserveFeeNumerator,
         uint256 _reserveFeeDenominator,
         uint256 _withdrawalFeeNumerator,
-        uint256 _withdrawalFeeDenominator
+        uint256 _withdrawalFeeDenominator,
+        bool _useDynamicWithdrawalFees
     ) Owned(_owner) {
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
@@ -44,6 +51,7 @@ contract RevoFees is Owned, IRevoFees {
         reserveFeeDenominator = _reserveFeeDenominator;
         withdrawalFeeNumerator = _withdrawalFeeNumerator;
         withdrawalFeeDenominator = _withdrawalFeeDenominator;
+        useDynamicWithdrawalFees = _useDynamicWithdrawalFees;
     }
 
     function updateCompounderFee(
@@ -78,6 +86,29 @@ contract RevoFees is Owned, IRevoFees {
     ) external onlyOwner {
         withdrawalFeeNumerator = _withdrawalFeeNumerator;
         withdrawalFeeDenominator = _withdrawalFeeDenominator;
+        emit WithdrawalFeeUpdated(
+            msg.sender,
+            _withdrawalFeeNumerator,
+            _withdrawalFeeDenominator
+        );
+    }
+
+    /**
+     * Set a flag for whether dynamic withdrawal fees should be used.
+     *
+     * If true, only rewards earned in the last compounding interval will be counted towards fees.
+     *
+     * Otherwise, static withdrawal fees will be used.
+     */
+    function updateUseDynamicWithdrawalFees(bool _useDynamicWithdrawalFees)
+        external
+        onlyOwner
+    {
+        useDynamicWithdrawalFees = _useDynamicWithdrawalFees;
+        emit UseDynamicWithdrawalFeesUpdated(
+            msg.sender,
+            _useDynamicWithdrawalFees
+        );
     }
 
     /*
@@ -120,20 +151,6 @@ contract RevoFees is Owned, IRevoFees {
      */
     function issueCompounderBonus(address recipient) external pure override {
         return; // intentionally does nothing
-    }
-
-    /**
-     * Set a flag for whether dynamic withdrawal fees should be used.
-     *
-     * If true, only rewards earned in the last compounding interval will be counted towards fees.
-     *
-     * Otherwise, static withdrawal fees will be used.
-     */
-    function setUseDynamicWithdrawalFees(bool _useDynamicWithdrawalFees)
-        external
-        onlyOwner
-    {
-        useDynamicWithdrawalFees = _useDynamicWithdrawalFees;
     }
 
     /*
