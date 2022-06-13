@@ -107,10 +107,6 @@ describe('RevoUbeswapSingleRewardFarmBot tests', () => {
     const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
     await farmBotContract.grantRole(compounderRole, compounder.address)
 
-    await farmBotContract.connect(deployer).updateFees(feeContract.address)
-    await expect(farmBotContract.connect(investor0).updateFees(feeContract.address)).rejectedWith('AccessControl')
-    await expect(farmBotContract.connect(compounder).updateFees(feeContract.address)).rejectedWith('AccessControl')
-
     await farmBotContract.connect(deployer).updateReserveAddress(reserve.address)
     await expect(farmBotContract.connect(investor0).updateReserveAddress(investor0.address)).rejectedWith('AccessControl')
     await expect(farmBotContract.connect(compounder).updateReserveAddress(reserve.address)).rejectedWith('AccessControl')
