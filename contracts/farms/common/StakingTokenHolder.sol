@@ -34,7 +34,6 @@ import "../../fees/interfaces/IRevoFees.sol";
 abstract contract StakingTokenHolder is ERC20, AccessControl, Pausable {
     using SafeERC20 for IERC20;
 
-    event FeesUpdated(address indexed by, address indexed to);
     event ReserveUpdated(address indexed by, address indexed reserveAddress);
     event SlippageUpdated(
         address indexed by,
@@ -125,14 +124,6 @@ abstract contract StakingTokenHolder is ERC20, AccessControl, Pausable {
         );
         reserveAddress = _reserveAddress;
         emit ReserveUpdated(msg.sender, _reserveAddress);
-    }
-
-    function updateFees(address _revoFees)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        revoFees = IRevoFees(_revoFees);
-        emit FeesUpdated(msg.sender, _revoFees);
     }
 
     function updateSlippage(
