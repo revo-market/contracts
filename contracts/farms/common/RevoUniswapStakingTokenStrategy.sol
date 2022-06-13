@@ -136,7 +136,7 @@ abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
             require(
                 _paths[i][0].length == 0 ||
                     address(stakingToken0) ==
-                    _paths[i][0][_paths[i].length - 1],
+                    _paths[i][0][_paths[i][0].length - 1],
                 "invalid path end"
             );
             require(
@@ -147,7 +147,7 @@ abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
             require(
                 _paths[i][1].length == 0 ||
                     address(stakingToken1) ==
-                    _paths[i][1][_paths[i].length - 1],
+                    _paths[i][1][_paths[i][1].length - 1],
                 "invalid path end"
             );
         }
