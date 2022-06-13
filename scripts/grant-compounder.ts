@@ -11,7 +11,7 @@ import {getKit, grantCompounderRole} from "../src/farm-bot-api";
  */
 async function main(){
   const kit = await getKit(process.env.ADMIN_PRIVATE_KEY!!)
-  await grantCompounderRole(kit, process.env.COMPOUNDER_ADDRESS!!)
+  await grantCompounderRole(kit, process.env.COMPOUNDER_ADDRESS!!, process.env.FARM_BOT_ADDRESS!!)
 }
 
 main().catch(console.error)
