@@ -69,11 +69,12 @@ export interface RevoFPBrokerContract {
  *
  * @param kit
  * @param recipient
+ * @param farmBotAddress
  */
-export async function grantCompounderRole(kit: ContractKit, recipient?: string): Promise<void> {
+export async function grantCompounderRole(kit: ContractKit, recipient?: string, farmBotAddress?: string): Promise<void> {
   const newCompounderAddress = recipient ?? kit.web3.eth.defaultAccount
   console.log('Granting compounder role to ' + newCompounderAddress)
-  const farmBot = await getFarmBotContract(kit)
+  const farmBot = await getFarmBotContract(kit, farmBotAddress ?? FARM_BOT_ADDRESS)
   const role = await farmBot.methods.COMPOUNDER_ROLE().call()
   await farmBot.methods.grantRole(role, newCompounderAddress!!).send({
     from: kit.web3.eth.defaultAccount!!,
