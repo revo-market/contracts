@@ -129,19 +129,25 @@ abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
             _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
             require(
-                address(rewardsTokens[i]) == _paths[i][0][0],
+                _paths[i][0].length == 0 ||
+                    address(rewardsTokens[i]) == _paths[i][0][0],
                 "invalid path start"
             );
             require(
-                address(stakingToken0) == _paths[i][0][_paths[i].length - 1],
+                _paths[i][0].length == 0 ||
+                    address(stakingToken0) ==
+                    _paths[i][0][_paths[i].length - 1],
                 "invalid path end"
             );
             require(
-                address(rewardsTokens[i]) == _paths[i][1][0],
+                _paths[i][1].length == 0 ||
+                    address(rewardsTokens[i]) == _paths[i][1][0],
                 "invalid path start"
             );
             require(
-                address(stakingToken1) == _paths[i][1][_paths[i].length - 1],
+                _paths[i][1].length == 0 ||
+                    address(stakingToken1) ==
+                    _paths[i][1][_paths[i].length - 1],
                 "invalid path end"
             );
         }
