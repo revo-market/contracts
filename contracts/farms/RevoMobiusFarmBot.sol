@@ -132,6 +132,10 @@ contract RevoMobiusFarmBot is StakingTokenHolder {
         );
         for (uint256 i = 0; i < _paths.length; i++) {
             require(
+                _paths[i][0] == address(rewardsTokens[i]),
+                "Invalid path start"
+            );
+            require(
                 _paths[i][_paths[i].length - 1] ==
                     address(celoNativeStakingToken),
                 "Each swap path must end with the Celo-native staking token"
