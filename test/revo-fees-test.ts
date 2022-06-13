@@ -56,5 +56,42 @@ describe('Unit tests for RevoFees contract', async () => {
     expect(await feeContract.withdrawalFeeNumerator()).to.equal(4)
     expect(await feeContract.withdrawalFeeDenominator()).to.equal(100)
   })
+  it('Cannot set fee denominators to 0', async () => {
+    await expect(feeContract.connect(owner).updateCompounderFee(2, 0)).rejectedWith('>0')
+    await expect(feeContract.connect(owner).updateReserveFee(3,0)).rejectedWith('>0')
+    await expect(feeContract.connect(owner).updateWithdrawalFee(4,0)).rejectedWith('>0')
+
+    const contractFactory = await ethers.getContractFactory('RevoFees')
+    await expect(contractFactory.deploy(
+      await owner.getAddress(),  // owner
+      1, // compounderFeeNumerator
+      0, // compounderFeeDenominator (shouldnt be 0)
+      1, // reserveFeeNumerator
+      1, // reserveFeeDenominator
+      1, // withdrawalFeeNumerator
+      1, // withdrawalFeeDenominator
+      false // useDynamicWithdrawalFees
+    )).rejectedWith(">0")
+    await expect(contractFactory.deploy(
+      await owner.getAddress(),  // owner
+      1, // compounderFeeNumerator
+      1, // compounderFeeDenominator
+      1, // reserveFeeNumerator
+      0, // reserveFeeDenominator (shouldn't be 0)
+      1, // withdrawalFeeNumerator
+      1, // withdrawalFeeDenominator
+      false // useDynamicWithdrawalFees
+    )).rejectedWith(">0")
+    await expect(contractFactory.deploy(
+      await owner.getAddress(),  // owner
+      1, // compounderFeeNumerator
+      1, // compounderFeeDenominator
+      1, // reserveFeeNumerator
+      1, // reserveFeeDenominator
+      1, // withdrawalFeeNumerator
+      0, // withdrawalFeeDenominator (shouldn't be 0)
+      false // useDynamicWithdrawalFees
+    )).rejectedWith(">0")
+  })
 })
 

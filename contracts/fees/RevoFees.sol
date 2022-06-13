@@ -45,6 +45,12 @@ contract RevoFees is Owned, IRevoFees {
         uint256 _withdrawalFeeDenominator,
         bool _useDynamicWithdrawalFees
     ) Owned(_owner) {
+        require(
+            _compounderFeeDenominator > 0 &&
+                _reserveFeeDenominator > 0 &&
+                _withdrawalFeeDenominator > 0,
+            "Fee denoms must be >0"
+        );
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
         reserveFeeNumerator = _reserveFeeNumerator;
@@ -58,6 +64,7 @@ contract RevoFees is Owned, IRevoFees {
         uint256 _compounderFeeNumerator,
         uint256 _compounderFeeDenominator
     ) external onlyOwner {
+        require(_compounderFeeDenominator > 0, "Denom must be >0");
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
         emit CompounderFeeUpdated(
@@ -71,6 +78,7 @@ contract RevoFees is Owned, IRevoFees {
         uint256 _reserveFeeNumerator,
         uint256 _reserveFeeDenominator
     ) external onlyOwner {
+        require(_reserveFeeDenominator > 0, "Denom must be >0");
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
         emit ReserveFeeUpdated(
@@ -84,6 +92,7 @@ contract RevoFees is Owned, IRevoFees {
         uint256 _withdrawalFeeNumerator,
         uint256 _withdrawalFeeDenominator
     ) external onlyOwner {
+        require(_withdrawalFeeDenominator > 0, "Denom must be >0");
         withdrawalFeeNumerator = _withdrawalFeeNumerator;
         withdrawalFeeDenominator = _withdrawalFeeDenominator;
         emit WithdrawalFeeUpdated(
@@ -174,7 +183,7 @@ contract RevoFees is Owned, IRevoFees {
         override
         returns (uint256 feeNumerator, uint256 feeDenominator)
     {
-        if (useDynamicWithdrawalFees) {
+        if (useDynamicWithdrawalFees && interestEarnedDenominator > 0) {
             feeNumerator = interestEarnedNumerator;
             feeDenominator = interestEarnedDenominator;
         } else {
