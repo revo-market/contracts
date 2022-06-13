@@ -125,12 +125,13 @@ contract RevoFees is Owned, IRevoFees {
     /**
      * Set a flag for whether dynamic withdrawal fees should be used.
      *
-     * If true, only rewards earned in the last compounding interval will be counted towards fees.@author
+     * If true, only rewards earned in the last compounding interval will be counted towards fees.
      *
      * Otherwise, static withdrawal fees will be used.
      */
     function setUseDynamicWithdrawalFees(bool _useDynamicWithdrawalFees)
         external
+        onlyOwner
     {
         useDynamicWithdrawalFees = _useDynamicWithdrawalFees;
     }
@@ -142,8 +143,7 @@ contract RevoFees is Owned, IRevoFees {
      *   right after and taking some of the rewards. (Withdrawal fee should be >= the interest gained from the last time
      *   'compound' was called.)
      *
-     * Takes the interest earned the last time 'compound' was called as a parameter. This makes it possible to have dynamic
-     *   withdrawal fees.
+     * If useDynamicWithdrawalFees is true, sets the fee to interest earned in the last compounding interval.
      *
      * (Note that there is a maximum fee set in the Farm Bot contract to protect
      *   users from unreasonably high withdrawal fees.)
@@ -151,12 +151,13 @@ contract RevoFees is Owned, IRevoFees {
     function withdrawalFee(
         uint256 interestEarnedNumerator,
         uint256 interestEarnedDenominator
-    ) external override returns (uint256 feeNumerator, uint256 feeDenominator) {
-        if (
-            useDynamicWithdrawalFees &&
-            interestEarnedNumerator * withdrawalFeeDenominator <
-            withdrawalFeeNumerator * interestEarnedDenominator
-        ) {
+    )
+        external
+        view
+        override
+        returns (uint256 feeNumerator, uint256 feeDenominator)
+    {
+        if (useDynamicWithdrawalFees) {
             feeNumerator = interestEarnedNumerator;
             feeDenominator = interestEarnedDenominator;
         } else {
