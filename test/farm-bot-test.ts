@@ -17,7 +17,8 @@ import {
 const {ethers} = require("hardhat")
 
 
-describe('Farm bot tests', () => {
+describe('Farm bot tests', function() {
+  this.timeout(5000)
   let deployer: SignerWithAddress, reserve: SignerWithAddress, compounder: SignerWithAddress, investor0: SignerWithAddress, investor1: SignerWithAddress,
     feeContract: MockRevoFees,
     token0Contract: MockERC20, token1Contract: MockERC20,
