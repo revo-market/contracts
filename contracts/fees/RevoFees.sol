@@ -25,24 +25,46 @@ contract RevoFees is Owned, IRevoFees {
         uint256 reserveFeeNumerator,
         uint256 reserveFeeDenominator
     );
+    event WithdrawalFeeUpdated(
+        address indexed by,
+        uint256 withdrawalFeeNumerator,
+        uint256 withdrawalFeeDenominator
+    );
+    event UseDynamicWithdrawalFeesUpdated(address indexed by, bool newValue);
+    uint256 public withdrawalFeeNumerator;
+    uint256 public withdrawalFeeDenominator;
+    bool public useDynamicWithdrawalFees;
 
     constructor(
         address _owner,
         uint256 _compounderFeeNumerator,
         uint256 _compounderFeeDenominator,
         uint256 _reserveFeeNumerator,
-        uint256 _reserveFeeDenominator
+        uint256 _reserveFeeDenominator,
+        uint256 _withdrawalFeeNumerator,
+        uint256 _withdrawalFeeDenominator,
+        bool _useDynamicWithdrawalFees
     ) Owned(_owner) {
+        require(
+            _compounderFeeDenominator > 0 &&
+                _reserveFeeDenominator > 0 &&
+                _withdrawalFeeDenominator > 0,
+            "Fee denoms must be >0"
+        );
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
+        withdrawalFeeNumerator = _withdrawalFeeNumerator;
+        withdrawalFeeDenominator = _withdrawalFeeDenominator;
+        useDynamicWithdrawalFees = _useDynamicWithdrawalFees;
     }
 
     function updateCompounderFee(
         uint256 _compounderFeeNumerator,
         uint256 _compounderFeeDenominator
     ) external onlyOwner {
+        require(_compounderFeeDenominator > 0, "Denom must be >0");
         compounderFeeNumerator = _compounderFeeNumerator;
         compounderFeeDenominator = _compounderFeeDenominator;
         emit CompounderFeeUpdated(
@@ -56,12 +78,45 @@ contract RevoFees is Owned, IRevoFees {
         uint256 _reserveFeeNumerator,
         uint256 _reserveFeeDenominator
     ) external onlyOwner {
+        require(_reserveFeeDenominator > 0, "Denom must be >0");
         reserveFeeNumerator = _reserveFeeNumerator;
         reserveFeeDenominator = _reserveFeeDenominator;
         emit ReserveFeeUpdated(
             msg.sender,
             _reserveFeeNumerator,
             _reserveFeeDenominator
+        );
+    }
+
+    function updateWithdrawalFee(
+        uint256 _withdrawalFeeNumerator,
+        uint256 _withdrawalFeeDenominator
+    ) external onlyOwner {
+        require(_withdrawalFeeDenominator > 0, "Denom must be >0");
+        withdrawalFeeNumerator = _withdrawalFeeNumerator;
+        withdrawalFeeDenominator = _withdrawalFeeDenominator;
+        emit WithdrawalFeeUpdated(
+            msg.sender,
+            _withdrawalFeeNumerator,
+            _withdrawalFeeDenominator
+        );
+    }
+
+    /**
+     * Set a flag for whether dynamic withdrawal fees should be used.
+     *
+     * If true, only rewards earned in the last compounding interval will be counted towards fees.
+     *
+     * Otherwise, static withdrawal fees will be used.
+     */
+    function updateUseDynamicWithdrawalFees(bool _useDynamicWithdrawalFees)
+        external
+        onlyOwner
+    {
+        useDynamicWithdrawalFees = _useDynamicWithdrawalFees;
+        emit UseDynamicWithdrawalFeesUpdated(
+            msg.sender,
+            _useDynamicWithdrawalFees
         );
     }
 
@@ -114,8 +169,7 @@ contract RevoFees is Owned, IRevoFees {
      *   right after and taking some of the rewards. (Withdrawal fee should be >= the interest gained from the last time
      *   'compound' was called.)
      *
-     * Takes the interest earned the last time 'compound' was called as a parameter. This makes it possible to have dynamic
-     *   withdrawal fees.
+     * If useDynamicWithdrawalFees is true, sets the fee to interest earned in the last compounding interval.
      *
      * (Note that there is a maximum fee set in the Farm Bot contract to protect
      *   users from unreasonably high withdrawal fees.)
@@ -125,12 +179,16 @@ contract RevoFees is Owned, IRevoFees {
         uint256 interestEarnedDenominator
     )
         external
-        pure
+        view
         override
         returns (uint256 feeNumerator, uint256 feeDenominator)
     {
-        // 0.25% (ignores interest earned for simplicity)
-        feeNumerator = 25;
-        feeDenominator = 10000;
+        if (useDynamicWithdrawalFees && interestEarnedDenominator > 0) {
+            feeNumerator = interestEarnedNumerator;
+            feeDenominator = interestEarnedDenominator;
+        } else {
+            feeNumerator = withdrawalFeeNumerator;
+            feeDenominator = withdrawalFeeDenominator;
+        }
     }
 }

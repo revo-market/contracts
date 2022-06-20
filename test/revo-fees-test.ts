@@ -1,19 +1,29 @@
 import {expect} from 'chai'
+import * as chai from 'chai'
+import chaiAsPromised = require("chai-as-promised")
+chai.use(chaiAsPromised)
 import {RevoFees} from "../typechain"
+import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 
 const {ethers} = require('hardhat')
 
 describe('Unit tests for RevoFees contract', async () => {
-  it('fees can be accessed', async () => {
-    const [owner] = await ethers.getSigners()
+  let feeContract: RevoFees, owner: SignerWithAddress, nonOwner: SignerWithAddress
+  beforeEach(async () => {
+    [owner, nonOwner] = (await ethers.getSigners())
     const contractFactory = await ethers.getContractFactory('RevoFees')
-    const feeContract: RevoFees = await contractFactory.deploy(
+    feeContract = await contractFactory.deploy(
       await owner.getAddress(),  // owner
       1, // compounderFeeNumerator
       1000, // compounderFeeDenominator
       2, // reserveFeeNumerator
-      1001 // reserveFeeDenominator
+      1001, // reserveFeeDenominator
+      25, // withdrawalFeeNumerator
+      10000, // withdrawalFeeDenominator
+      false // useDynamicWithdrawalFees
     )
+  })
+  it('fees can be accessed', async () => {
     expect(await feeContract.compounderFeeNumerator()).to.equal(1)
     expect(await feeContract.compounderFeeDenominator()).to.equal(1000)
     expect(await feeContract.reserveFeeNumerator()).to.equal(2)
@@ -21,6 +31,67 @@ describe('Unit tests for RevoFees contract', async () => {
     const {feeNumerator: withdrawalFeeNumerator, feeDenominator: withdrawalFeeDenominator} = await feeContract.withdrawalFee(1, 1000)
     expect(withdrawalFeeNumerator).to.equal(25)
     expect(withdrawalFeeDenominator).to.equal(10000)
+  })
+  it('useDynamicWithdrawalFee: enables dynamic withdrawal fees', async () => {
+    await feeContract.connect(owner).updateUseDynamicWithdrawalFees(true)
+    const {feeNumerator: dynamicWithdrawalFeeNumerator, feeDenominator: dynamicWithdrawalFeeDenominator} = await feeContract.withdrawalFee(1, 1000)
+    expect(dynamicWithdrawalFeeNumerator).to.equal(1)
+    expect(dynamicWithdrawalFeeDenominator).to.equal(1000)
+  })
+  it('setters can only be used by owner', async () => {
+    await expect(feeContract.connect(nonOwner).updateUseDynamicWithdrawalFees(true)).rejectedWith('contract owner')
+    await expect(feeContract.connect(nonOwner).updateCompounderFee(2, 100)).rejectedWith('contract owner')
+    await expect(feeContract.connect(nonOwner).updateReserveFee(3,100)).rejectedWith('contract owner')
+    await expect(feeContract.connect(nonOwner).updateWithdrawalFee(4,100)).rejectedWith('contract owner')
+
+    await feeContract.connect(owner).updateUseDynamicWithdrawalFees(true)
+    expect(await feeContract.useDynamicWithdrawalFees()).to.be.true
+    await feeContract.connect(owner).updateCompounderFee(2, 100)
+    expect(await feeContract.compounderFeeNumerator()).to.equal(2)
+    expect(await feeContract.compounderFeeDenominator()).to.equal(100)
+    await feeContract.connect(owner).updateReserveFee(3,100)
+    expect(await feeContract.reserveFeeNumerator()).to.equal(3)
+    expect(await feeContract.reserveFeeDenominator()).to.equal(100)
+    await feeContract.connect(owner).updateWithdrawalFee(4,100)
+    expect(await feeContract.withdrawalFeeNumerator()).to.equal(4)
+    expect(await feeContract.withdrawalFeeDenominator()).to.equal(100)
+  })
+  it('Cannot set fee denominators to 0', async () => {
+    await expect(feeContract.connect(owner).updateCompounderFee(2, 0)).rejectedWith('>0')
+    await expect(feeContract.connect(owner).updateReserveFee(3,0)).rejectedWith('>0')
+    await expect(feeContract.connect(owner).updateWithdrawalFee(4,0)).rejectedWith('>0')
+
+    const contractFactory = await ethers.getContractFactory('RevoFees')
+    await expect(contractFactory.deploy(
+      await owner.getAddress(),  // owner
+      1, // compounderFeeNumerator
+      0, // compounderFeeDenominator (shouldnt be 0)
+      1, // reserveFeeNumerator
+      1, // reserveFeeDenominator
+      1, // withdrawalFeeNumerator
+      1, // withdrawalFeeDenominator
+      false // useDynamicWithdrawalFees
+    )).rejectedWith(">0")
+    await expect(contractFactory.deploy(
+      await owner.getAddress(),  // owner
+      1, // compounderFeeNumerator
+      1, // compounderFeeDenominator
+      1, // reserveFeeNumerator
+      0, // reserveFeeDenominator (shouldn't be 0)
+      1, // withdrawalFeeNumerator
+      1, // withdrawalFeeDenominator
+      false // useDynamicWithdrawalFees
+    )).rejectedWith(">0")
+    await expect(contractFactory.deploy(
+      await owner.getAddress(),  // owner
+      1, // compounderFeeNumerator
+      1, // compounderFeeDenominator
+      1, // reserveFeeNumerator
+      1, // reserveFeeDenominator
+      1, // withdrawalFeeNumerator
+      0, // withdrawalFeeDenominator (shouldn't be 0)
+      false // useDynamicWithdrawalFees
+    )).rejectedWith(">0")
   })
 })
 
