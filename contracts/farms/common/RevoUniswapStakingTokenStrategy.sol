@@ -128,6 +128,28 @@ abstract contract RevoUniswapStakingTokenStrategy is StakingTokenHolder {
         uint256[] memory _tokenBalances = new uint256[](rewardsTokens.length);
         for (uint256 i = 0; i < rewardsTokens.length; i++) {
             _tokenBalances[i] = rewardsTokens[i].balanceOf(address(this));
+            require(
+                _paths[i][0].length == 0 ||
+                    address(rewardsTokens[i]) == _paths[i][0][0],
+                "invalid path start"
+            );
+            require(
+                _paths[i][0].length == 0 ||
+                    address(stakingToken0) ==
+                    _paths[i][0][_paths[i][0].length - 1],
+                "invalid path end"
+            );
+            require(
+                _paths[i][1].length == 0 ||
+                    address(rewardsTokens[i]) == _paths[i][1][0],
+                "invalid path start"
+            );
+            require(
+                _paths[i][1].length == 0 ||
+                    address(stakingToken1) ==
+                    _paths[i][1][_paths[i][1].length - 1],
+                "invalid path end"
+            );
         }
 
         // Swap rewards tokens for equal value of LP tokens

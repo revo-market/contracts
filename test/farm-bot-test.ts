@@ -17,7 +17,8 @@ import {
 const {ethers} = require("hardhat")
 
 
-describe('Farm bot tests', () => {
+describe('Farm bot tests', function() {
+  this.timeout(5000)
   let deployer: SignerWithAddress, reserve: SignerWithAddress, compounder: SignerWithAddress, investor0: SignerWithAddress, investor1: SignerWithAddress,
     feeContract: MockRevoFees,
     token0Contract: MockERC20, token1Contract: MockERC20,
@@ -336,6 +337,46 @@ describe('Farm bot tests', () => {
       expect(await farmBotContract.balanceOf(investor0.address)).to.equal(1000)
       expect(await farmBotContract.getLpAmount(1000)).to.equal(1010)
     })
+    it('Rejects invalid compound paths', async () => {
+      const arbitraryDeadline = BigNumber.from(Date.now()).div(1000).add(600)
+      await expect(farmBotContract.connect(compounder).compound(
+        [
+          [
+            [rewardsToken0Contract.address, stakingToken1Address], // bad (should end with stakingToken0Address)
+            [rewardsToken0Contract.address, stakingToken1Address]
+          ],
+          [
+            [rewardsToken1Contract.address, stakingToken0Address],
+            [rewardsToken1Contract.address, stakingToken1Address]
+          ],
+          [
+            [rewardsToken2Contract.address, stakingToken0Address],
+            [rewardsToken2Contract.address, stakingToken1Address]
+          ]
+        ],
+        [[10, 10], [10, 10], [10, 10]],
+        arbitraryDeadline
+      )).rejectedWith('invalid path end')
+
+      await expect(farmBotContract.connect(compounder).compound(
+        [
+          [
+            [rewardsToken1Contract.address, stakingToken0Address], // bad (should start with rewardsToken0Contract.address)
+            [rewardsToken0Contract.address, stakingToken1Address]
+          ],
+          [
+            [rewardsToken1Contract.address, stakingToken0Address],
+            [rewardsToken1Contract.address, stakingToken1Address]
+          ],
+          [
+            [rewardsToken2Contract.address, stakingToken0Address],
+            [rewardsToken2Contract.address, stakingToken1Address]
+          ]
+        ],
+        [[10, 10], [10, 10], [10, 10]],
+        arbitraryDeadline
+      )).rejectedWith('invalid path start')
+    })
     it('Works when a reward token is also a staking token', async () => {
       farmBotContract = (await farmBotFactory.deploy(
         deployer.address,
@@ -345,7 +386,7 @@ describe('Farm bot tests', () => {
         feeContract.address,
 	[stakingToken0Address],
         routerContract.address,
-	routerContract.address,
+	      routerContract.address,
         'FP',
       ))
       const compounderRole = await farmBotContract.COMPOUNDER_ROLE()
