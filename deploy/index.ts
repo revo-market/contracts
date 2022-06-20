@@ -24,6 +24,8 @@ import cusdCusdcFarmConfigure from './08-configure-cusd-cusdc/index'
 import mcUSDmcEURMetaFarmDeployer from './09-mcusd-mceur-metafarm/index'
 import configureMetaFarm from './10-configure-metafarm/index'
 import stakeMetaFarm from './11-stake-metafarm/index'
+import deployUniswapArbitrage from './12-arbitrage/index'
+import testArbitrage from './13-test-arbitrage/index'
 
 export default {
   'revo-fees': revoFeeDeployer,
@@ -36,7 +38,9 @@ export default {
   'configure-cusd-cusdc': cusdCusdcFarmConfigure,
   'mcusd-mceur-metafarm': mcUSDmcEURMetaFarmDeployer,
   'configure-metafarm': configureMetaFarm,
-  'stake-metafarm': stakeMetaFarm
+  'stake-metafarm': stakeMetaFarm,
+  'deploy-uniswap-arbitrage': deployUniswapArbitrage,
+  'test-arbitrage': testArbitrage
 }
 
 
