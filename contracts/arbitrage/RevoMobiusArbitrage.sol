@@ -8,14 +8,14 @@ import "../fp-broker/RevoFPBroker.sol";
 import "../ubeswap/contracts/uniswapv2/interfaces/IUniswapV2Router02SwapOnly.sol";
 import "../library/UniswapRouter.sol";
 import "../farms/RevoMobiusFarmBot.sol";
+import "../ubeswap-moola/ubeswap-moola/lending/LendingPoolWrapper.sol";
 
 struct Case1Arguments {
     address[] mintPath;
-    uint256 minAmountCeloNativeToken;
-    uint256 minAmountBridgedToken;
+    uint256 minAmountCeloNativeTokenOut;
+    uint256 minAmountBridgedTokenOut;
     address[] zapPath;
-    uint256 minAmountStakingToken0;
-    uint256 minAmountStakingToken1;
+    uint256 minAmountLPOut;
     address zapToken;
     uint256 amountZapToken;
     address farmBotAddress;
@@ -70,6 +70,10 @@ contract RevoMobiusArbitrage is Pausable, AccessControl {
         IERC20(_token).safeTransfer(msg.sender, _tokenBalance);
     }
 
+    // ISwap's `addLiquidity` method requires a parameter located in calldata, but it must be computed dynamically, and thus cannot
+    // be provided by the arbitrage-er. This private variable is used as a dynamic array that we can pass as calldata.
+    uint256[] private amounts;
+
     /**
      * Attempts to perform "Case 1" arbitrage. This is profitable when the cost of swapping for RFP
      * is greater than the cost of minting LP from scratch and depositing it for FP. This method attempts to:
@@ -96,9 +100,9 @@ contract RevoMobiusArbitrage is Pausable, AccessControl {
      * @param _args.amountZapToken {uint256} The amount of the zap token to use for this arbitrage attempt
      * @param _args.farmBotAddress {address} The address of the RFP used in this arbitrage attempt
      * @param _args.mintPath {address[]} a swap path from the zap token to the celo native token in the mobius pair
-     * @param _args.minAmountCeloNativeToken {uint256} the minimum amount out of the celo native token expected from the initial swap
-     * @param _args.minAmountBridgedToken {uint256} the minimum amount of the bridge token expected from the celo-native-to-bridged token swap
-     * @param _args.minLiquidity {uint256} Minimum liquidity to mint (of the mobius pair)
+     * @param _args.minAmountCeloNativeTokenOut {uint256} the minimum amount out of the celo native token expected from the initial swap
+     * @param _args.minAmountBridgedTokenOut {uint256} the minimum amount of the bridge token expected from the celo-native-to-bridged token swap
+     * @param _args.minAmountLPOut {uint256} Minimum amount of LP to mint (of the mobius pair)
      * @param _args.zapPath {uint256[]} An array representing the path to use for the swap from RFP back to the original zap token
      * @param _args.deadline {uint256} Deadline by which the execution must complete
      **/
@@ -134,50 +138,72 @@ contract RevoMobiusArbitrage is Pausable, AccessControl {
         // Since the contract may already be holding some staking tokens, some bookkeeping is necessary to know how much we can spend
         // Due to a tricky edge case where the zap token may be one of the liquidity tokens, we have to set the initial liquidity token
         // balance before transferring the caller's zap token.
-        uint256[] memory _liquidityTokenBalances = new uint256[](2);
         uint256[2] memory _initialLiquidityTokenBalances = [
             _farmBot.stakingToken0().balanceOf(address(this)),
             _farmBot.stakingToken1().balanceOf(address(this))
         ];
 
-        // Get start token from sender, swap both halves for stakingToken0 and stakingToken1
+        // Get start token from sender
         IERC20(_args.zapToken).safeTransferFrom(
             msg.sender,
             address(this),
             _args.amountZapToken
         );
 
-        // todo swap for celo-native token
-        // todo swap half of celo-native token for bridged token
+        // Swap for celo-native token
+        uint256 _amountCeloNativeTokenOut = UniswapRouter.swap(
+            _farmBot.router(),
+            _args.mintPath,
+            _args.amountZapToken,
+            IERC20(_args.zapToken),
+            _args.minAmountCeloNativeTokenOut,
+            _args.deadline
+        );
+
+        // Swap half of celo-native token for bridged token
+        uint256 _amountBridgedTokenOut = _farmBot.swap().swap(
+          _farmBot.celoNativeStakingTokenIndex(),
+          _farmBot.bridgedStakingTokenIndex(),
+          _amountCeloNativeTokenOut / 2,
+          _args.minAmountBridgedTokenOut,
+          _args.deadline
+        );
+
+        // mint LP
+        delete amounts;
+        amounts.push(_amountCeloNativeTokenOut / 2);
+        amounts.push(_amountBridgedTokenOut);
+        _farmBot.stakingToken0().safeIncreaseAllowance(address(_farmBot.swap()), amounts[0]);
+        _farmBot.stakingToken1().safeIncreaseAllowance(address(_farmBot.swap()), amounts[1]);
+        uint256 _amountLPMinted = _farmBot.swap().addLiquidity(amounts, _args.minAmountLPOut, _args.deadline);
 
         uint256 _initialFpBalance = IERC20(_args.farmBotAddress).balanceOf(
             address(this)
         );
 
-        // todo mint LP
-        // todo deposit LP (and get FP)
+        _farmBot.deposit(_amountLPMinted);
 
         // Swap the RFP for the original starting token. Reverts if output amount is more than amountZapToken (the amount
         //  invested in arbitrage to begin with).
         uint256 _amountZapTokenOut = UniswapRouter.swap(
-            _farmBot.swapRouter(),
+            _farmBot.router(),
             _args.zapPath,
             IERC20(_args.farmBotAddress).balanceOf(address(this)) -
                 _initialFpBalance,
             IERC20(_args.farmBotAddress),
-            _args.amountZapToken,
+            _args.amountZapToken, // revert if output is lower than original investment
             _args.deadline
-        );
-
-        // Extra safety check; should not be strictly necessary if the swap router is honest
-        require(
-            _amountZapTokenOut >= _args.amountZapToken,
-            "RevoUniswapArbitrage: Arbitrage is not profitable"
         );
 
         // Send original token back to sender, along with any staking tokens that went unused
         IERC20(_args.zapToken).safeTransfer(msg.sender, _amountZapTokenOut);
-        // todo send any stakingToken0 or stakingToken1 back to user
+        if (_farmBot.stakingToken0().balanceOf(address(this)) > _initialLiquidityTokenBalances[0]) {
+            _farmBot.stakingToken0().safeTransfer(msg.sender, _farmBot.stakingToken0().balanceOf(address(this)) - _initialLiquidityTokenBalances[0]);
+        }
+        if (_farmBot.stakingToken1().balanceOf(address(this)) > _initialLiquidityTokenBalances[1]) {
+            _farmBot.stakingToken1().safeTransfer(msg.sender, _farmBot.stakingToken1().balanceOf(address(this)) - _initialLiquidityTokenBalances[1]);
+        }
+
         return _amountZapTokenOut;
     }
 
