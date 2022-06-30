@@ -15,8 +15,8 @@ import {
 async function main() {
   const kit = await getKit(process.env.PRIVATE_KEY!!)
   const amount = kit.web3.utils.toWei(process.env.LP_AMOUNT!!, 'ether')
-  await approve(kit, amount)
-  await deposit(kit, amount)
+  await approve(kit, amount, process.env.LP_ADDRESS!, process.env.FARM_BOT_ADDRESS!)
+  await deposit(kit, amount, process.env.FARM_BOT_ADDRESS!)
 }
 
 main().catch(console.error)

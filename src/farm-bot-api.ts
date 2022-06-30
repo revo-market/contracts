@@ -122,10 +122,10 @@ export function getRevoFPBrokerContract(kit: ContractKit): RevoFPBrokerContract 
   return new kit.web3.eth.Contract(REVO_FP_BROKER_ABI, REVO_FP_BROKER_ADDRESS)
 }
 
-export async function deposit(kit: ContractKit, amount: string) {
+export async function deposit(kit: ContractKit, amount: string, farmBotAddress: string = FARM_BOT_ADDRESS) {
   // NOTE: this invests in a farm now!
   console.log(`depositing ${amount.toString()} for ${kit.web3.eth.defaultAccount} in farm bot at ${FARM_BOT_ADDRESS}`)
-  const farmBotContract = getFarmBotContract(kit)
+  const farmBotContract = getFarmBotContract(kit, farmBotAddress)
   assert.ok(kit.web3.eth.defaultAccount)
   return farmBotContract.methods.deposit(amount).send({
     from:kit.web3.eth.defaultAccount,

@@ -30,7 +30,7 @@ async function main(){
     gas: 1e7
   })
 
-  await fpBroker.methods.withdrawFPForStakingTokens(farmBotAddress, process.env.FP_AMOUNT!!, '0', '0', deadline)
+  // await fpBroker.methods.withdrawFPForStakingTokens(farmBotAddress, process.env.FP_AMOUNT!!, '0', '0', deadline)
 }
 
 main()
