@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.3;
 
-import "../openzeppelin-solidity/contracts/Ownable.sol";
+import "../openzeppelin-solidity/contracts/AccessControl.sol";
 
 
 interface ILP {
@@ -11,32 +11,51 @@ interface ILP {
     function token1() external view returns (address);
 }
 
-interface IFarm {
+interface IFarmBot {
     function stakingToken() external view returns (address);
 }
 
-contract FarmBotRegistry is Ownable {
-    event FarmInfo(
-        address indexed stakingAddress,
+contract FarmBotRegistry is AccessControl {
+    event FarmBotInfo(
+        address indexed farmBotAddress,
         bytes32 indexed farmName,
-        address indexed lpAddress
+        address indexed lpAddress,
+        bool indexed isMetaFarm
     );
     event LPInfo(
         address indexed lpAddress,
         address indexed token0Address,
         address indexed token1Address
     );
-    event FarmData(
-        address indexed stakingAddress,
+    event FarmBotData(
+        address indexed farmBotAddress,
         uint256 indexed tvlUSD,
         uint256 indexed rewardsUSDPerYear
     );
+    event GrantRole(
+        address indexed by,
+        address indexed newRoleRecipient,
+        bytes32 role
+    );
 
-    constructor() {}
+    function grantRole(bytes32 role, address account)
+        public
+        virtual
+        override
+        onlyRole(getRoleAdmin(role))
+        {
+        super.grantRole(role, account);
+        emit GrantRole(msg.sender, account, role);
+    }
 
-    function addFarmInfo(bytes32 farmName, IFarm farm) public onlyOwner {
-        ILP lp = ILP(farm.stakingToken());
-        emit FarmInfo(address(farm), farmName, address(lp));
+    constructor(address _owner) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _owner);
+        emit GrantRole(msg.sender, _owner, DEFAULT_ADMIN_ROLE);
+    }
+
+    function addFarmInfo(bytes32 farmName, IFarmBot farmBot, bool isMetaFarm) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        ILP lp = ILP(farmBot.stakingToken());
+        emit FarmBotInfo(address(farmBot), farmName, address(lp), isMetaFarm);
         emit LPInfo(address(lp), lp.token0(), lp.token1());
     }
 
@@ -44,7 +63,7 @@ contract FarmBotRegistry is Ownable {
         address farm,
         uint256 tvlUSD,
         uint256 rewardsUSDPerYear
-    ) public onlyOwner {
-        emit FarmData(farm, tvlUSD, rewardsUSDPerYear);
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        emit FarmBotData(farm, tvlUSD, rewardsUSDPerYear);
     }
 }
