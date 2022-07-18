@@ -16,6 +16,8 @@ interface IFarmBot {
 }
 
 contract FarmBotRegistry is AccessControl {
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
     event FarmBotInfo(
         address indexed farmBotAddress,
         bytes32 indexed farmName,
@@ -53,7 +55,7 @@ contract FarmBotRegistry is AccessControl {
         emit GrantRole(msg.sender, _owner, DEFAULT_ADMIN_ROLE);
     }
 
-    function addFarmInfo(bytes32 farmName, IFarmBot farmBot, bool isMetaFarm) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addFarmInfo(bytes32 farmName, IFarmBot farmBot, bool isMetaFarm) public onlyRole(OPERATOR_ROLE) {
         ILP lp = ILP(farmBot.stakingToken());
         emit FarmBotInfo(address(farmBot), farmName, address(lp), isMetaFarm);
         emit LPInfo(address(lp), lp.token0(), lp.token1());
@@ -63,7 +65,7 @@ contract FarmBotRegistry is AccessControl {
         address farm,
         uint256 tvlUSD,
         uint256 rewardsUSDPerYear
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) public onlyRole(OPERATOR_ROLE) {
         emit FarmBotData(farm, tvlUSD, rewardsUSDPerYear);
     }
 }
