@@ -2,6 +2,8 @@
 pragma solidity 0.8.4;
 
 import "../farms/common/RevoUniswapStakingTokenStrategy.sol";
+import "../library/UniswapRouter.sol";
+import "../library/ArrayUtils.sol";
 
     struct LiquidityAmounts {
         uint256 amount0Desired;
@@ -129,7 +131,7 @@ contract RevoFPBroker is Pausable, AccessControl {
         if (_token0Leftover > 0) {
             IERC20(_zapTokenAddress).safeTransfer(msg.sender, UniswapRouter.swap(
                 _farmBot.swapRouter(),
-                _path0,
+                ArrayUtils.reverseArray(_path0),
                 _token0Leftover,
                 IERC20(_farmBot.stakingToken0()),
                 0, // TODO consider setting a min amount somehow. Difficult because we won't know in advance how much staking token will be left over. Maybe some minimum exchange rate could be taken as a parameter.
@@ -141,7 +143,7 @@ contract RevoFPBroker is Pausable, AccessControl {
         if (_token1Leftover > 0) {
             IERC20(_zapTokenAddress).safeTransfer(msg.sender, UniswapRouter.swap(
                 _farmBot.swapRouter(),
-                _path1,
+                ArrayUtils.reverseArray(_path1),
                 _token1Leftover,
                 IERC20(_farmBot.stakingToken1()),
                 0, // TODO consider setting a min amount somehow. Difficult because we won't know in advance how much staking token will be left over. Maybe some minimum exchange rate could be taken as a parameter.
