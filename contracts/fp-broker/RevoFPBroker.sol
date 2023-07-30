@@ -123,16 +123,30 @@ contract RevoFPBroker is Pausable, AccessControl {
             _deadline
         );
 
-        // send leftovers to investor // todo swap back for zap token first
-        uint256 _token0Leftover = _liquidityAmounts.amount0Desired -
+        // if leftovers, swap back to zap token and send back to investor
+        uint256 _token0Leftover = _amountToken0 -
                     _amount0Invested;
         if (_token0Leftover > 0) {
-            _farmBot.stakingToken0().safeTransfer(msg.sender, _token0Leftover);
+            IERC20(_zapTokenAddress).safeTransfer(msg.sender, UniswapRouter.swap(
+                _farmBot.swapRouter(),
+                _path0,
+                _token0Leftover,
+                IERC20(_farmBot.stakingToken0()),
+                0, // TODO consider setting a min amount somehow. Difficult because we won't know in advance how much staking token will be left over. Maybe some minimum exchange rate could be taken as a parameter.
+                _deadline
+            ));
         }
-        uint256 _token1Leftover = _liquidityAmounts.amount1Desired -
+        uint256 _token1Leftover = _amountToken1 -
                     _amount1Invested;
         if (_token1Leftover > 0) {
-            _farmBot.stakingToken1().safeTransfer(msg.sender, _token1Leftover);
+            IERC20(_zapTokenAddress).safeTransfer(msg.sender, UniswapRouter.swap(
+                _farmBot.swapRouter(),
+                _path1,
+                _token1Leftover,
+                IERC20(_farmBot.stakingToken1()),
+                0, // TODO consider setting a min amount somehow. Difficult because we won't know in advance how much staking token will be left over. Maybe some minimum exchange rate could be taken as a parameter.
+                _deadline
+            ));
         }
 
         // trade LP for FP
