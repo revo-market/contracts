@@ -3,12 +3,12 @@ pragma solidity 0.8.4;
 
 import "../farms/common/RevoUniswapStakingTokenStrategy.sol";
 
-struct LiquidityAmounts {
-    uint256 amount0Desired;
-    uint256 amount1Desired;
-    uint256 amount0Min;
-    uint256 amount1Min;
-}
+    struct LiquidityAmounts {
+        uint256 amount0Desired;
+        uint256 amount1Desired;
+        uint256 amount0Min;
+        uint256 amount1Min;
+    }
 
 /**
  * RevoFPBroker helps users get FP directly from staking tokens (skipping the step where you get LP first).
@@ -62,31 +62,49 @@ contract RevoFPBroker is Pausable, AccessControl {
      */
     function getUniswapLPAndDeposit(
         address _farmBotAddress,
+        address _zapTokenAddress,
+        uint256 _zapTokenAmount,
+        address[] calldata _path0,
+        address[] calldata _path1,
         LiquidityAmounts calldata _liquidityAmounts,
         uint256 _deadline
     ) external ensure(_deadline) whenNotPaused {
-        RevoUniswapStakingTokenStrategy _farmBot = RevoUniswapStakingTokenStrategy(
-                _farmBotAddress
-            );
+        // TODO update to start from a single zap token. We can do this by:
+        //  1. taking the zap token address, zap token amount, and paths from zap token to staking tokens as params
+        //  2. swapping zap token for staking tokens
+        //  3. getting LP and depositing for FP the same way it is currently done
+        //  4. with any leftover staking tokens, swap them back to zap token using reversed path params, and return to sender
 
-        // take staking tokens from sender
-        require(
-            _liquidityAmounts.amount0Desired > 0,
-            "amount0Desired must be greater than 0"
+        RevoUniswapStakingTokenStrategy _farmBot = RevoUniswapStakingTokenStrategy(
+            _farmBotAddress
         );
-        require(
-            _liquidityAmounts.amount1Desired > 0,
-            "amount1Desired must be greater than 0"
-        );
-        _farmBot.stakingToken0().safeTransferFrom(
+
+        // take zap token from sender
+        require(_zapTokenAmount > 0, "zapTokenAmount must be greater than 0");
+        IERC20(_zapTokenAddress).safeTransferFrom(
             msg.sender,
             address(this),
-            _liquidityAmounts.amount0Desired
+            _zapTokenAmount
         );
-        _farmBot.stakingToken1().safeTransferFrom(
-            msg.sender,
-            address(this),
-            _liquidityAmounts.amount1Desired
+
+        // swap zap token for equal value of staking tokens
+        require(_path0.length == 0 || (_path0[0] == _zapTokenAddress && _path0[_path0.length - 1] == _farmBot.stakingToken0()), "_path0 invalid");
+        require(_path1.length == 0 || (_path1[0] == _zapTokenAddress && _path1[_path1.length - 1] == _farmBot.stakingToken1()), "_path1 invalid");
+        uint256 _amountToken0 = UniswapRouter.swap(
+            _farmBot.swapRouter(),
+            _path0,
+            _zapTokenAmount / 2,
+            IERC20(_zapTokenAddress),
+            _liquidityAmounts.amount0Min,
+            _deadline
+        );
+        uint256 _amountToken1 = UniswapRouter.swap(
+            _farmBot.swapRouter(),
+            _path1,
+            _zapTokenAmount / 2,
+            IERC20(_zapTokenAddress),
+            _liquidityAmounts.amount1Min,
+            _deadline
         );
 
         // add liquidity
@@ -95,24 +113,24 @@ contract RevoFPBroker is Pausable, AccessControl {
             uint256 _amount1Invested,
             uint256 _lpAmount
         ) = UniswapRouter.addLiquidity(
-                _farmBot.liquidityRouter(),
-                _farmBot.stakingToken0(),
-                _farmBot.stakingToken1(),
-                _liquidityAmounts.amount0Desired,
-                _liquidityAmounts.amount1Desired,
-                _liquidityAmounts.amount0Min,
-                _liquidityAmounts.amount1Min,
-                _deadline
-            );
+            _farmBot.liquidityRouter(),
+            _farmBot.stakingToken0(),
+            _farmBot.stakingToken1(),
+            _amountToken0,
+            _amountToken1,
+            _liquidityAmounts.amount0Min,
+            _liquidityAmounts.amount1Min,
+            _deadline
+        );
 
-        // send leftovers to investor
+        // send leftovers to investor // todo swap back for zap token first
         uint256 _token0Leftover = _liquidityAmounts.amount0Desired -
-            _amount0Invested;
+                    _amount0Invested;
         if (_token0Leftover > 0) {
             _farmBot.stakingToken0().safeTransfer(msg.sender, _token0Leftover);
         }
         uint256 _token1Leftover = _liquidityAmounts.amount1Desired -
-            _amount1Invested;
+                    _amount1Invested;
         if (_token1Leftover > 0) {
             _farmBot.stakingToken1().safeTransfer(msg.sender, _token1Leftover);
         }
@@ -128,7 +146,9 @@ contract RevoFPBroker is Pausable, AccessControl {
 
         // send FP to investor
         IERC20(_farmBotAddress).safeTransfer(msg.sender, _fpGained);
-        emit RFPBrokerDeposit(
+
+
+        emit RFPBrokerDeposit( // TODO update event to include zap token address and amount
             _farmBotAddress,
             msg.sender,
             _amount0Invested,
@@ -161,8 +181,8 @@ contract RevoFPBroker is Pausable, AccessControl {
             _fpAmount
         );
         RevoUniswapStakingTokenStrategy _farmBot = RevoUniswapStakingTokenStrategy(
-                _farmBotAddress
-            );
+            _farmBotAddress
+        );
         uint256 _lpGained;
         {
             uint256 _lpAmount = _farmBot.getLpAmount(_fpAmount);
@@ -176,16 +196,16 @@ contract RevoFPBroker is Pausable, AccessControl {
         }
         (uint256 _token0Gained, uint256 _token1Gained) = UniswapRouter
             .removeLiquidity(
-                _farmBot.liquidityRouter(),
-                _farmBot.stakingToken(),
-                address(_farmBot.stakingToken0()),
-                address(_farmBot.stakingToken1()),
-                _lpGained,
-                _amountAMin,
-                _amountBMin,
-                msg.sender,
-                _deadline
-            );
+            _farmBot.liquidityRouter(),
+            _farmBot.stakingToken(),
+            address(_farmBot.stakingToken0()),
+            address(_farmBot.stakingToken1()),
+            _lpGained,
+            _amountAMin,
+            _amountBMin,
+            msg.sender,
+            _deadline
+        );
         emit RFPBrokerWithdrawal(
             _farmBotAddress,
             msg.sender,
